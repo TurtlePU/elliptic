@@ -3,7 +3,7 @@ use std::{iter::Sum, mem::take, ops::{Add, Div, Mul, Neg, Rem, Sub}};
 use itertools::{Itertools, EitherOrBoth::{self, *}};
 use num_traits::{One, Zero};
 
-use crate::traits::div_rem::DivRem;
+use crate::traits::DivRem;
 
 use self::monome::Monome;
 
