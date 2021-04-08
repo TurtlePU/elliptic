@@ -110,12 +110,12 @@ impl<T> Neg for Poly<T> where T: Neg {
     }
 }
 
-impl<T, U, V> Mul<&Poly<U>> for &Poly<T>
+impl<T, U, V> Mul<Poly<U>> for Poly<T>
 where T: Mul<U, Output = V> + Clone, U: Clone, V: Sum
 {
     type Output = Poly<V>;
 
-    fn mul(self, rhs: &Poly<U>) -> Self::Output {
+    fn mul(self, rhs: Poly<U>) -> Self::Output {
         let ans_deg = self.degree() + rhs.degree();
         let mut addends_by_deg: Vec<_> = (0..=ans_deg)
             .map(|monome_deg| monome_deg.min(ans_deg - monome_deg) + 1)
@@ -155,23 +155,23 @@ where T: Div<U, Output = V> + Clone + Zero + Sub<T, Output = T>,
     }
 }
 
-impl<'a, T, U, V> Div<&'a Poly<U>> for Poly<T>
-where Self: DivRem<&'a Poly<U>, Output = Vec<Monome<V>>>,
+impl<T, U, V> Div<Poly<U>> for Poly<T>
+where Self: for<'a> DivRem<&'a Poly<U>, Output = Vec<Monome<V>>>,
       V: Zero
 {
     type Output = Poly<V>;
 
-    fn div(mut self, rhs: &'a Poly<U>) -> Self::Output {
-        Poly::from(self.div_rem(rhs))
+    fn div(mut self, rhs: Poly<U>) -> Self::Output {
+        Poly::from(self.div_rem(&rhs))
     }
 }
 
-impl<'a, T, U> Rem<&'a Poly<U>> for Poly<T>
-where Self: DivRem<&'a Poly<U>> {
+impl<T, U> Rem<Poly<U>> for Poly<T>
+where Self: for<'a> DivRem<&'a Poly<U>> {
     type Output = Self;
 
-    fn rem(mut self, rhs: &'a Poly<U>) -> Self::Output {
-        self.div_rem(rhs);
+    fn rem(mut self, rhs: Poly<U>) -> Self::Output {
+        self.div_rem(&rhs);
         self
     }
 }
