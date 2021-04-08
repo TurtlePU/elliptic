@@ -1,11 +1,15 @@
 use std::ops::{Add, Div, Mul, Neg, Sub};
 
-use num_traits::{One, Zero};
+use num_traits::{Inv, One, Zero};
 
-use crate::algo::inverse::modular_inverse;
+use crate::{algo::inverse::modular_inverse, traits::{Field, Ring}};
 
 #[derive(Clone, Copy)]
 pub struct Zn<const N: usize>(usize);
+
+impl<const N: usize> Ring for Zn<N> {}
+
+impl<const N: usize> Field for Zn<N> {}
 
 impl<const N: usize> From<usize> for Zn<N> {
     fn from(n: usize) -> Self {
@@ -45,9 +49,11 @@ impl<const N: usize> Mul for Zn<N> {
     }
 }
 
-impl<const N: usize> Zn<N> {
-    pub fn inv(self) -> Self {
-        Self(modular_inverse(self.0, N).unwrap())
+impl<const N: usize> Inv for Zn<N> {
+    type Output = Self;
+
+    fn inv(self) -> Self::Output {
+        Self(modular_inverse(self.0 as isize, N as isize).unwrap() as usize)
     }
 }
 

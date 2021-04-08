@@ -1,12 +1,7 @@
-use std::ops::{Div, Mul, Sub};
-
-use num_traits::{One, Zero};
+use crate::traits::Integral;
 
 /// Returns (x, y) such that a * x + b * y = gcd(a, b).
-pub fn extended_gcd<T>(a: T, b: T) -> (T, T)
-where T: Zero + One + Clone +
-         Mul<Output = T> + Sub<Output = T> + Div<Output = T>
-{
+pub fn extended_gcd<T>(a: T, b: T) -> (T, T) where T: Integral {
     let (mut old_r, mut r) = (a, b);
     let (mut old_s, mut s) = (T::one(), T::zero());
     let (mut old_t, mut t) = (T::zero(), T::one());
