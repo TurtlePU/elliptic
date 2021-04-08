@@ -10,10 +10,10 @@ pub struct Monome<T> {
     pub degree: usize,
 }
 
-impl<T, U, V> Div<Monome<U>> for Monome<T> where T: Div<U, Output = V> {
-    type Output = Monome<V>;
+impl<T> Div for Monome<T> where T: Div<Output = T> {
+    type Output = Self;
 
-    fn div(self, rhs: Monome<U>) -> Self::Output {
+    fn div(self, rhs: Self) -> Self::Output {
         assert!(self.degree >= rhs.degree);
         Monome {
             coeff: self.coeff / rhs.coeff,
@@ -22,12 +22,11 @@ impl<T, U, V> Div<Monome<U>> for Monome<T> where T: Div<U, Output = V> {
     }
 }
 
-impl<T, U, V> Mul<Poly<U>> for Monome<T>
-where T: Mul<U, Output = V> + Clone, V: Zero {
-    type Output = Poly<V>;
+impl<T> Mul<Poly<T>> for Monome<T> where T: Mul<Output = T> + Zero + Clone {
+    type Output = Poly<T>;
 
-    fn mul(self, rhs: Poly<U>) -> Self::Output {
-        let head = repeat_with(V::zero).take(self.degree);
+    fn mul(self, rhs: Poly<T>) -> Self::Output {
+        let head = repeat_with(T::zero).take(self.degree);
         let tail = rhs.0.into_iter().map(|x| self.coeff.clone() * x);
         Poly(head.chain(tail).collect())
     }

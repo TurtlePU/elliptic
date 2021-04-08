@@ -7,8 +7,7 @@ pub struct NotInvertible;
 
 pub fn modular_inverse<T>(arg: T, modulo: T) -> Result<T, NotInvertible>
 where T: Ord + Integral {
-    let (mut x, y) = extended_gcd(arg.clone(), modulo.clone());
-    let gcd = arg * x.clone() + modulo.clone() * y;
+    let (gcd, mut x, _) = extended_gcd(arg.clone(), modulo.clone());
     if !gcd.is_one() {
         Err(NotInvertible)
     } else {
@@ -28,8 +27,7 @@ pub fn poly_inverse<T>(arg: Poly<T>, modulo: Poly<T>)
     -> Result<Poly<T>, Proportional>
 where Poly<T>: Integral
 {
-    let (x, y) = extended_gcd(arg.clone(), modulo.clone());
-    let gcd = arg * x.clone() + modulo * y;
+    let (gcd, x, _) = extended_gcd(arg.clone(), modulo.clone());
     if gcd.degree() > 0 {
         if x.degree() > 0 {
             Err(Proportional::ReducibleModulo)

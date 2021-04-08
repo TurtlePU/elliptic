@@ -1,7 +1,7 @@
 use crate::traits::Integral;
 
-/// Returns (x, y) such that a * x + b * y = gcd(a, b).
-pub fn extended_gcd<T>(a: T, b: T) -> (T, T) where T: Integral {
+/// Returns (g, x, y) such that a * x + b * y = g = gcd(a, b).
+pub fn extended_gcd<T>(a: T, b: T) -> (T, T, T) where T: Integral {
     let (mut old_r, mut r) = (a, b);
     let (mut old_s, mut s) = (T::one(), T::zero());
     let (mut old_t, mut t) = (T::zero(), T::one());
@@ -13,7 +13,7 @@ pub fn extended_gcd<T>(a: T, b: T) -> (T, T) where T: Integral {
         old_t = replace(old_t - quot.clone() * t.clone(), &mut t);
     }
 
-    (old_s, old_t)
+    (old_r, old_s, old_t)
 }
 
 fn replace<T>(src: T, dest: &mut T) -> T {
@@ -34,7 +34,8 @@ mod tests {
     #[test]
     fn counts_gcd() {
         let (a, b) = (4, 18);
-        let (x, y) = extended_gcd(a, b);
-        assert_eq!(a * x + b * y, gcd(a, b));
+        let (g, x, y) = extended_gcd(a, b);
+        assert_eq!(g, a * x + b * y);
+        assert_eq!(g, gcd(a, b));
     }
 }

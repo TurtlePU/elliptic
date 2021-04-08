@@ -28,19 +28,29 @@ impl<T> Poly<T> {
         })
     }
 
-    pub fn apply_binop<U, V, F>(self, rhs: Poly<U>, op: F) -> Poly<V>
-    where F: Fn(EitherOrBoth<T, U>) -> V,
-          V: Zero
+    pub fn apply_binop<F>(self, rhs: Self, op: F) -> Self
+    where T: Zero, F: Fn(EitherOrBoth<T, T>) -> T
     {
         let mut reversed_trimmed =
             self.0.into_iter()
                 .zip_longest(rhs.0.into_iter())
                 .map(op)
                 .rev()
-                .skip_while(V::is_zero)
+                .skip_while(T::is_zero)
                 .collect::<Vec<_>>();
         reversed_trimmed.reverse();
         Poly(reversed_trimmed)
+    }
+
+    fn div_rem(mut self, rhs: Self) -> (Self, Self) where T: Field {
+        let mut ans_monomes = Vec::new();
+        while self.degree() >= rhs.degree() {
+            let monome = self.eldest_monome().unwrap() /
+                         rhs.eldest_monome().unwrap();
+            ans_monomes.push(monome.clone());
+            self = self - monome * rhs.clone();
+        }
+        (self, Self::from(ans_monomes))
     }
 }
 
@@ -73,27 +83,24 @@ impl<T> From<Vec<Monome<T>>> for Poly<T> where T: Zero {
     }
 }
 
-impl<T, U, V> Add<Poly<U>> for Poly<T>
-where T: Add<U, Output = V> + Zero, U: Zero, V: Zero {
-    type Output = Poly<V>;
+impl<T> Add for Poly<T> where T: Add<Output = T> + Zero {
+    type Output = Self;
 
-    fn add(self, rhs: Poly<U>) -> Self::Output {
+    fn add(self, rhs: Self) -> Self::Output {
         self.apply_binop(rhs, |x| match x {
             Both(x, y) => x + y,
-            Left(x) => x + U::zero(),
-            Right(y) => T::zero() + y,
+            Left(x) | Right(x) => x,
         })
     }
 }
 
-impl<T, U, V> Sub<Poly<U>> for Poly<T>
-where T: Sub<U, Output = V> + Zero, U: Zero, V: Zero {
-    type Output = Poly<V>;
+impl<T> Sub for Poly<T> where T: Sub<Output = T> + Zero {
+    type Output = Self;
 
-    fn sub(self, rhs: Poly<U>) -> Self::Output {
+    fn sub(self, rhs: Self) -> Self::Output {
         self.apply_binop(rhs, |x| match x {
             Both(x, y) => x - y,
-            Left(x) => x - U::zero(),
+            Left(x) => x,
             Right(y) => T::zero() - y,
         })
     }
@@ -107,11 +114,10 @@ impl<T> Neg for Poly<T> where T: Neg {
     }
 }
 
-impl<T, U, V> Mul<Poly<U>> for Poly<T>
-where T: Mul<U, Output = V> + Clone, U: Clone, V: Sum {
-    type Output = Poly<V>;
+impl<T> Mul for Poly<T> where T: Mul<Output = T> + Clone + Sum {
+    type Output = Self;
 
-    fn mul(self, rhs: Poly<U>) -> Self::Output {
+    fn mul(self, rhs: Self) -> Self::Output {
         let ans_deg = self.degree() + rhs.degree();
         let mut addends_by_deg: Vec<_> = (0..=ans_deg)
             .map(|monome_deg| monome_deg.min(ans_deg - monome_deg) + 1)
@@ -129,19 +135,6 @@ where T: Mul<U, Output = V> + Clone, U: Clone, V: Sum {
             .map(|addends| addends.into_iter().sum())
             .collect();
         Poly(result)
-    }
-}
-
-impl<T> Poly<T> where T: Field {
-    fn div_rem(mut self, rhs: Self) -> (Self, Self) {
-        let mut ans_monomes = Vec::new();
-        while self.degree() >= rhs.degree() {
-            let monome = self.eldest_monome().unwrap() /
-                         rhs.eldest_monome().unwrap();
-            ans_monomes.push(monome.clone());
-            self = self - monome * rhs.clone();
-        }
-        (self, Self::from(ans_monomes))
     }
 }
 
