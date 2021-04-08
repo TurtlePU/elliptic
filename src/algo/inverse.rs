@@ -6,6 +6,7 @@ use crate::poly::Poly;
 
 use super::extended_gcd;
 
+#[derive(Debug)]
 pub struct NotInvertible;
 
 pub fn modular_inverse<T>(arg: T, modulo: T) -> Result<T, NotInvertible>
