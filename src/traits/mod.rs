@@ -1,3 +1,5 @@
-mod div_rem;
+pub trait DivRem<Rhs = Self> {
+    type Output;
 
-pub use div_rem::DivRem;
+    fn div_rem(&mut self, rhs: Rhs) -> Self::Output;
+}
