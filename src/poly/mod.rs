@@ -5,7 +5,7 @@ use num_traits::{One, Zero};
 
 use crate::traits::{Field, Integral, Ring};
 
-use self::monome::Monome;
+pub use self::monome::Monome;
 
 mod monome;
 
@@ -15,6 +15,13 @@ pub struct Poly<T>(Vec<T>);
 impl<T> Ring for Poly<T> where T: Field + Sum {}
 
 impl<T> Integral for Poly<T> where T: Field + Sum {}
+
+#[macro_export]
+macro_rules! poly {
+    ($($e:expr),*) => {
+        Poly::from(vec![$(Zn($e)),*])
+    };
+}
 
 impl<T> Poly<T> {
     pub fn degree(&self) -> usize {
@@ -67,6 +74,20 @@ impl<T> From<T> for Poly<T> where T: Zero {
         } else {
             Self(vec![coeff])
         }
+    }
+}
+
+impl<T> From<Vec<T>> for Poly<T> where T: Zero {
+    fn from(mut coeffs: Vec<T>) -> Self {
+        let mut n = coeffs.len();
+        while n > 0 {
+            if !coeffs[n - 1].is_zero() {
+                break;
+            }
+            n -= 1;
+        }
+        coeffs.truncate(n);
+        Self(coeffs)
     }
 }
 
