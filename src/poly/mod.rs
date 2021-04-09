@@ -3,14 +3,16 @@ use std::{iter::Sum, ops::{Add, Div, Mul, Neg, Rem, Sub}};
 use itertools::{Itertools, EitherOrBoth::{self, *}};
 use num_traits::{One, Zero};
 
-use crate::traits::{Field, Integral, Ring};
+use crate::traits::{Field, Group, Integral, Ring};
 
 pub use self::monome::Monome;
 
 mod monome;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Poly<T>(Vec<T>);
+
+impl<T> Group for Poly<T> where T: Group {}
 
 impl<T> Ring for Poly<T> where T: Field + Sum {}
 
@@ -19,7 +21,7 @@ impl<T> Integral for Poly<T> where T: Field + Sum {}
 #[macro_export]
 macro_rules! poly {
     ($($e:expr),*) => {
-        Poly::from(vec![$(Zn($e)),*])
+        Poly::from(vec![$(Zn::from($e)),*])
     };
 }
 

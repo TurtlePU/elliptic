@@ -2,10 +2,12 @@ use std::{convert::TryInto, ops::{Add, Div, Mul, Neg, Sub}};
 
 use num_traits::{Inv, One, Zero};
 
-use crate::{algo::inverse::modular_inverse, traits::{Field, Ring}};
+use crate::{algo::inverse::modular_inverse, traits::{Field, Group, Ring}};
 
-#[derive(Clone, Copy)]
-pub struct Zn<const N: usize>(pub usize);
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct Zn<const N: usize>(usize);
+
+impl<const N: usize> Group for Zn<N> {}
 
 impl<const N: usize> Ring for Zn<N> {}
 
@@ -29,7 +31,7 @@ impl<const N: usize> Neg for Zn<N> {
     type Output = Self;
 
     fn neg(self) -> Self::Output {
-        Self(N - self.0)
+        Self::from(N - self.0)
     }
 }
 

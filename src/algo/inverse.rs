@@ -6,7 +6,7 @@ use super::extended_gcd;
 pub struct NotInvertible;
 
 pub fn modular_inverse<T>(arg: T, modulo: T) -> Result<T, NotInvertible>
-where T: Integral + Eq {
+where T: Integral {
     let (gcd, x, _) = extended_gcd(arg, modulo);
     if !gcd.is_one() {
         Err(NotInvertible)

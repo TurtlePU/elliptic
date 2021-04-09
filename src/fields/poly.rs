@@ -20,6 +20,9 @@ impl<T, I> IntoField<T, I> for I where I: Irreducible<T>, Poly<T>: Integral {
 
 pub struct PolyField<T, I>(Poly<T>, PhantomData<I>);
 
+impl<T, I> Group for PolyField<T, I>
+where I: Irreducible<T>, Poly<T>: Integral {}
+
 impl<T, I> Ring for PolyField<T, I>
 where I: Irreducible<T>, Poly<T>: Integral {}
 
@@ -31,6 +34,14 @@ impl<T, I> Clone for PolyField<T, I> where Poly<T>: Clone {
         Self(self.0.clone(), PhantomData)
     }
 }
+
+impl<T, I> PartialEq for PolyField<T, I> where Poly<T>: Eq {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl<T, I> Eq for PolyField<T, I> where Self: PartialEq {}
 
 impl<T, I> Add for PolyField<T, I> where I: Irreducible<T>, Poly<T>: Integral {
     type Output = Self;
