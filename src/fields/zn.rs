@@ -5,7 +5,7 @@ use num_traits::{Inv, One, Zero};
 use crate::{algo::inverse::modular_inverse, traits::{Field, Ring}};
 
 #[derive(Clone, Copy)]
-pub struct Zn<const N: usize>(usize);
+pub struct Zn<const N: usize>(pub usize);
 
 impl<const N: usize> Ring for Zn<N> {}
 

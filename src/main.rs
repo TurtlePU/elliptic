@@ -1,7 +1,7 @@
 pub mod algo;
+pub mod fields;
 pub mod poly;
 pub mod traits;
-pub mod zn;
 
 fn main() {
     println!("Hello world!");

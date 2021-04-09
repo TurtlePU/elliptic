@@ -11,4 +11,5 @@ pub trait Field : Ring + Inv<Output = Self> + Div<Output = Self> {}
 pub trait Integral : Ring + Div<Output = Self> + Rem<Output = Self> {}
 
 impl Ring for isize {}
+
 impl Integral for isize {}

@@ -18,6 +18,7 @@ where T: Ord + Integral {
     }
 }
 
+#[derive(Debug)]
 pub enum Proportional {
     ReducibleModulo,
     ArgIsAMultiple,
