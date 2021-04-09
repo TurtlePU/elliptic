@@ -2,7 +2,7 @@ use std::{convert::TryInto, ops::{Add, Div, Mul, Neg, Sub}};
 
 use num_traits::{Inv, One, Pow, Zero};
 
-use crate::{algo::inverse::modular_inverse, traits::{Field, Group, Ring}};
+use crate::{algo::extended_gcd, traits::{Field, Group, Ring}};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Zn<const N: usize>(usize);
@@ -76,7 +76,8 @@ impl<const N: usize> Inv for Zn<N> {
 
     fn inv(self) -> Self::Output {
         let n: isize = N.try_into().unwrap();
-        let mut inv = modular_inverse(self.0.try_into().unwrap(), n).unwrap();
+        let (gcd, mut inv, _) = extended_gcd(self.0.try_into().unwrap(), n);
+        assert!(gcd.is_one());
         while inv < 0 {
             inv += n;
         }

@@ -2,7 +2,7 @@ use std::{marker::PhantomData, ops::{Add, Div, Mul, Neg, Sub}};
 
 use num_traits::{Inv, One, Pow, Zero};
 
-use crate::{algo::inverse::poly_inverse, poly::Poly, traits::*};
+use crate::{algo::extended_gcd, poly::Poly, traits::*};
 
 pub trait Irreducible<T> {
     fn modulo() -> Poly<T>;
@@ -113,7 +113,9 @@ impl<T, I> Inv for PolyField<T, I> where I: Irreducible<T>, Poly<T>: Integral {
     type Output = Self;
 
     fn inv(self) -> Self::Output {
-        I::into_field(poly_inverse(self.0, I::modulo()).unwrap())
+        let (gcd, x, _) = extended_gcd(self.0, I::modulo());
+        assert_eq!(gcd.degree(), 0);
+        I::into_field(x / gcd)
     }
 }
 

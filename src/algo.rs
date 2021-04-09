@@ -20,9 +20,30 @@ fn replace<T>(src: T, dest: &mut T) -> T {
     std::mem::replace(dest, src)
 }
 
+/// `app(result, value x cnt)`
+pub fn repeat_monoid<T, F>(app: F, cnt: usize, value: T, result: T) -> T
+where T: Clone, F: Clone + Fn(T, T) -> T
+{
+    if cnt == 0 {
+        result
+    } else if cnt % 2 == 0 {
+        repeat_monoid(app.clone(), cnt / 2, app(value.clone(), value), result)
+    } else {
+        repeat_monoid(app.clone(), cnt - 1, value.clone(), app(result, value))
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{replace, extended_gcd};
+    use super::{extended_gcd, repeat_monoid, replace};
+    use std::ops::Add;
+
+    #[test]
+    fn test_repeat_monoid() {
+        for n in 0..100000 {
+            assert_eq!(repeat_monoid(usize::add, n, 1, 0), n);
+        }
+    }
 
     fn gcd(mut a: isize, mut b: isize) -> isize {
         while b != 0 {
@@ -32,10 +53,13 @@ mod tests {
     }
 
     #[test]
-    fn counts_gcd() {
-        let (a, b) = (4, 18);
-        let (g, x, y) = extended_gcd(a, b);
-        assert_eq!(g, a * x + b * y);
-        assert_eq!(g, gcd(a, b));
+    fn text_extended_gcd() {
+        for a in 1..800 {
+            for b in 1..=a {
+                let (g, x, y) = extended_gcd(a, b);
+                assert_eq!(g, a * x + b * y);
+                assert_eq!(g, gcd(a, b));
+            }
+        }
     }
 }
