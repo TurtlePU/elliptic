@@ -1,13 +1,9 @@
-use std::{iter::Sum, ops::{Add, Div, Mul, Neg, Rem, Sub}};
+use std::{iter::{Sum, repeat_with}, ops::{Add, Div, Mul, Neg, Rem, Sub}};
 
 use itertools::{Itertools, EitherOrBoth::{self, *}};
 use num_traits::{One, Pow, Zero};
 
 use crate::{algo::repeat_monoid, traits::{Field, Group, Integral, Ring}};
-
-pub use self::monome::Monome;
-
-mod monome;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct Poly<T>(Vec<T>);
@@ -206,5 +202,33 @@ impl<T> Zero for Poly<T> where T: Zero {
 impl<T> One for Poly<T> where T: One, Self: Mul<Output = Self> {
     fn one() -> Self {
         Self(vec![T::one()])
+    }
+}
+
+#[derive(Clone)]
+pub struct Monome<T> {
+    coeff: T,
+    degree: usize,
+}
+
+impl<T> Div for Monome<T> where T: Div<Output = T> {
+    type Output = Self;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        assert!(self.degree >= rhs.degree);
+        Monome {
+            coeff: self.coeff / rhs.coeff,
+            degree: self.degree - rhs.degree,
+        }
+    }
+}
+
+impl<T> Mul<Poly<T>> for Monome<T> where T: Mul<Output = T> + Zero + Clone {
+    type Output = Poly<T>;
+
+    fn mul(self, rhs: Poly<T>) -> Self::Output {
+        let head = repeat_with(T::zero).take(self.degree);
+        let tail = rhs.0.into_iter().map(|x| self.coeff.clone() * x);
+        Poly(head.chain(tail).collect())
     }
 }
