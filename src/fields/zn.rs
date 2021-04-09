@@ -1,6 +1,6 @@
 use std::{convert::TryInto, ops::{Add, Div, Mul, Neg, Sub}};
 
-use num_traits::{Inv, One, Zero};
+use num_traits::{Inv, One, Pow, Zero};
 
 use crate::{algo::inverse::modular_inverse, traits::{Field, Group, Ring}};
 
@@ -43,11 +43,31 @@ impl<const N: usize> Sub for Zn<N> {
     }
 }
 
+impl<const N: usize> Mul<isize> for Zn<N> {
+    type Output = Self;
+
+    fn mul(self, rhs: isize) -> Self::Output {
+        if rhs < 0 {
+            -self * -rhs
+        } else {
+            Self::from(self.0 * rhs as usize)
+        }
+    }
+}
+
 impl<const N: usize> Mul for Zn<N> {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
         Self::from(self.0 * rhs.0)
+    }
+}
+
+impl<const N: usize> Pow<u32> for Zn<N> {
+    type Output = Self;
+
+    fn pow(self, rhs: u32) -> Self::Output {
+        Self::from(self.0.pow(rhs))
     }
 }
 

@@ -1,6 +1,6 @@
 use std::{marker::PhantomData, ops::{Add, Div, Mul, Neg, Sub}};
 
-use num_traits::{Inv, One, Zero};
+use num_traits::{Inv, One, Pow, Zero};
 
 use crate::{algo::inverse::poly_inverse, poly::Poly, traits::*};
 
@@ -67,11 +67,29 @@ impl<T, I> Sub for PolyField<T, I> where I: Irreducible<T>, Poly<T>: Integral {
     }
 }
 
+impl<T, I> Mul<isize> for PolyField<T, I>
+where I: Irreducible<T>, Poly<T>: Integral {
+    type Output = Self;
+
+    fn mul(self, rhs: isize) -> Self::Output {
+        I::into_field(self.0 * rhs)
+    }
+}
+
 impl<T, I> Mul for PolyField<T, I> where I: Irreducible<T>, Poly<T>: Integral {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
         I::into_field(self.0 * rhs.0)
+    }
+}
+
+impl<T, I> Pow<u32> for PolyField<T, I>
+where I: Irreducible<T>, Poly<T>: Integral {
+    type Output = Self;
+
+    fn pow(self, rhs: u32) -> Self::Output {
+        I::into_field(self.0.pow(rhs))
     }
 }
 

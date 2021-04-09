@@ -1,9 +1,9 @@
 use std::{iter::Sum, ops::{Add, Div, Mul, Neg, Rem, Sub}};
 
 use itertools::{Itertools, EitherOrBoth::{self, *}};
-use num_traits::{One, Zero};
+use num_traits::{One, Pow, Zero};
 
-use crate::traits::{Field, Group, Integral, Ring};
+use crate::{algo::repeat_monoid, traits::{Field, Group, Integral, Ring}};
 
 pub use self::monome::Monome;
 
@@ -137,6 +137,14 @@ impl<T> Neg for Poly<T> where T: Neg {
     }
 }
 
+impl<T> Mul<isize> for Poly<T> where T: Mul<isize, Output = T> {
+    type Output = Self;
+
+    fn mul(self, rhs: isize) -> Self::Output {
+        Self(self.0.into_iter().map(|x| x * rhs).collect())
+    }
+}
+
 impl<T> Mul for Poly<T> where T: Mul<Output = T> + Clone + Sum {
     type Output = Self;
 
@@ -158,6 +166,14 @@ impl<T> Mul for Poly<T> where T: Mul<Output = T> + Clone + Sum {
             .map(|addends| addends.into_iter().sum())
             .collect();
         Poly(result)
+    }
+}
+
+impl<T> Pow<u32> for Poly<T> where Self: Clone + One + Mul<Output = Self> {
+    type Output = Self;
+
+    fn pow(self, rhs: u32) -> Self::Output {
+        repeat_monoid(Self::mul, rhs as usize, self, Self::one())
     }
 }
 

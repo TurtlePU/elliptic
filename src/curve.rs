@@ -1,19 +1,26 @@
-use std::{marker::PhantomData, ops::{Add, Neg, Sub}};
+use std::{
+    marker::PhantomData,
+    ops::{Add, Mul, Neg, Sub},
+};
 
 use num_traits::Zero;
 
-use crate::traits::{Field, Group};
+use crate::{
+    algo::repeat_monoid,
+    traits::{Field, Group},
+};
 
 pub trait Curve<F> {
     fn a() -> F;
     fn b() -> F;
 }
 
-fn check_solution<F, C>(x: F, y: F) -> bool where F: Field, C: Curve<F> {
-    let left = y.clone() * y;
-    let x_cube = x.clone() * x.clone() * x.clone();
-    let right = x_cube + C::a() * x + C::b();
-    left == right
+fn check_solution<F, C>(x: F, y: F) -> bool
+where
+    F: Field,
+    C: Curve<F>,
+{
+    y.pow(2) == x.clone().pow(3) + C::a() * x + C::b()
 }
 
 #[derive(Debug)]
@@ -25,7 +32,11 @@ pub trait Points<F, C> {
     fn spatial(x: F, y: F, z: F) -> Result<EllipticPoint<F, C>, NotOnCurve>;
 }
 
-impl<F, C> Points<F, C> for C where F: Field, C: Curve<F> {
+impl<F, C> Points<F, C> for C
+where
+    F: Field,
+    C: Curve<F>,
+{
     fn projected(x: F, y: F) -> Result<EllipticPoint<F, C>, NotOnCurve> {
         if check_solution::<F, C>(x.clone(), y.clone()) {
             Ok(EllipticPoint::new(x, y))
@@ -53,19 +64,34 @@ impl<F, C> EllipticPoint<F, C> {
     }
 
     fn from_coords(coords: Option<(F, F)>) -> Self {
-        Self { coords, curve: PhantomData }
+        Self {
+            coords,
+            curve: PhantomData,
+        }
     }
 }
 
-impl<F, C> Group for EllipticPoint<F, C> where F: Field, C: Curve<F> {}
+impl<F, C> Group for EllipticPoint<F, C>
+where
+    F: Field,
+    C: Curve<F>,
+{
+}
 
-impl<F, C> Clone for EllipticPoint<F, C> where F: Clone {
+impl<F, C> Clone for EllipticPoint<F, C>
+where
+    F: Clone,
+{
     fn clone(&self) -> Self {
         Self::from_coords(self.coords.clone())
     }
 }
 
-impl<F, C> PartialEq for EllipticPoint<F, C> where F: Field, C: Curve<F> {
+impl<F, C> PartialEq for EllipticPoint<F, C>
+where
+    F: Field,
+    C: Curve<F>,
+{
     fn eq(&self, other: &Self) -> bool {
         self.coords == other.coords
     }
@@ -73,32 +99,39 @@ impl<F, C> PartialEq for EllipticPoint<F, C> where F: Field, C: Curve<F> {
 
 impl<F, C> Eq for EllipticPoint<F, C> where Self: PartialEq {}
 
-impl<F, C> Add for EllipticPoint<F, C> where F: Field, C: Curve<F> {
+impl<F, C> Add for EllipticPoint<F, C>
+where
+    F: Field,
+    C: Curve<F>,
+{
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
+        let c = |x: &F| x.clone();
         match (self.coords, rhs.coords) {
-            (Some((xp, yp)), Some((xq, yq))) => if xp != xq {
-                let s = (yp.clone() - yq) / (xp.clone() - xq.clone());
-                let xr = s.clone() * s.clone() - xp.clone() - xq;
-                let yr = -yp + s * (xp - xr.clone());
+            (Some((xp, yp)), Some((xq, yq))) => {
+                if xp == xq && yp == -c(&yq) {
+                    return Self::zero();
+                }
+                let s = if xp != xq {
+                    (c(&yp) - yq) / (c(&xp) - c(&xq))
+                } else {
+                    (c(&xp).pow(2) * 3 + C::a()) / (c(&yp) + yq)
+                };
+                let xr = c(&s).pow(2) - c(&xp) - xq;
+                let yr = -yp + s * (xp - c(&xr));
                 Self::new(xr, yr)
-            } else if yp == yq && !yp.is_zero() {
-                let xp_sq = xp.clone() * xp.clone();
-                let s = (xp_sq.clone() + xp_sq.clone() + xp_sq + C::a())
-                      / (yp.clone() + yp.clone());
-                let xr = s.clone() * s.clone() - xp.clone() - xp.clone();
-                let yr = -yp + s * (xp - xr.clone());
-                Self::new(xr, yr)
-            } else {
-                Self::zero()
-            },
+            }
             (p, None) | (None, p) => Self::from_coords(p),
         }
     }
 }
 
-impl<F, C> Sub for EllipticPoint<F, C> where F: Field, C: Curve<F> {
+impl<F, C> Sub for EllipticPoint<F, C>
+where
+    F: Field,
+    C: Curve<F>,
+{
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self::Output {
@@ -106,7 +139,11 @@ impl<F, C> Sub for EllipticPoint<F, C> where F: Field, C: Curve<F> {
     }
 }
 
-impl<F, C> Neg for EllipticPoint<F, C> where F: Field, C: Curve<F> {
+impl<F, C> Neg for EllipticPoint<F, C>
+where
+    F: Field,
+    C: Curve<F>,
+{
     type Output = Self;
 
     fn neg(self) -> Self::Output {
@@ -117,7 +154,27 @@ impl<F, C> Neg for EllipticPoint<F, C> where F: Field, C: Curve<F> {
     }
 }
 
-impl<F, C> Zero for EllipticPoint<F, C> where F: Field, C: Curve<F> {
+impl<F, C> Mul<isize> for EllipticPoint<F, C>
+where
+    F: Field,
+    C: Curve<F>,
+{
+    type Output = Self;
+
+    fn mul(self, rhs: isize) -> Self::Output {
+        if rhs < 0 {
+            -self * -rhs
+        } else {
+            repeat_monoid(Self::add, rhs as usize, self, Self::zero())
+        }
+    }
+}
+
+impl<F, C> Zero for EllipticPoint<F, C>
+where
+    F: Field,
+    C: Curve<F>,
+{
     fn zero() -> Self {
         Self::from_coords(None)
     }
