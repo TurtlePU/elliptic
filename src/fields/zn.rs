@@ -1,4 +1,4 @@
-use std::ops::{Add, Div, Mul, Neg, Sub};
+use std::{convert::TryInto, ops::{Add, Div, Mul, Neg, Sub}};
 
 use num_traits::{Inv, One, Zero};
 
@@ -53,7 +53,12 @@ impl<const N: usize> Inv for Zn<N> {
     type Output = Self;
 
     fn inv(self) -> Self::Output {
-        Self(modular_inverse(self.0 as isize, N as isize).unwrap() as usize)
+        let n: isize = N.try_into().unwrap();
+        let mut inv = modular_inverse(self.0.try_into().unwrap(), n).unwrap();
+        while inv < 0 {
+            inv += n;
+        }
+        Self(inv.try_into().unwrap())
     }
 }
 
