@@ -1,10 +1,17 @@
-use std::{convert::TryInto, ops::{Add, Div, Mul, Neg, Sub}};
+use std::{
+    convert::TryInto,
+    iter::Sum,
+    ops::{Add, Div, Mul, Neg, Sub},
+};
 
 use num_traits::{Inv, One, Pow, Zero};
 
-use crate::{algo::extended_gcd, traits::{Field, Group, Ring}};
+use crate::{
+    algo::extended_gcd,
+    traits::{Field, Group, Ring},
+};
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Zn<const N: usize>(usize);
 
 impl<const N: usize> Group for Zn<N> {}
@@ -52,6 +59,12 @@ impl<const N: usize> Mul<isize> for Zn<N> {
         } else {
             Self::from(self.0 * rhs as usize)
         }
+    }
+}
+
+impl<const N: usize> Sum for Zn<N> {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        Self::from(iter.map(|x| x.0).sum::<usize>())
     }
 }
 

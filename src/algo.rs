@@ -1,7 +1,7 @@
 use crate::traits::Integral;
 
 /// Returns (g, x, y) such that a * x + b * y = g = gcd(a, b).
-pub fn extended_gcd<T>(a: T, b: T) -> (T, T, T) where T: Integral {
+pub fn extended_gcd<T: Integral>(a: T, b: T) -> (T, T, T) {
     let (mut old_r, mut r) = (a, b);
     let (mut old_s, mut s) = (T::one(), T::zero());
     let (mut old_t, mut t) = (T::zero(), T::one());
@@ -22,7 +22,9 @@ fn replace<T>(src: T, dest: &mut T) -> T {
 
 /// `app(result, value x cnt)`
 pub fn repeat_monoid<T, F>(app: F, cnt: usize, value: T, result: T) -> T
-where T: Clone, F: Clone + Fn(T, T) -> T
+where
+    T: Clone,
+    F: Clone + Fn(T, T) -> T,
 {
     if cnt == 0 {
         result
@@ -35,13 +37,13 @@ where T: Clone, F: Clone + Fn(T, T) -> T
 
 #[cfg(test)]
 mod tests {
-    use super::{extended_gcd, repeat_monoid, replace};
+    use super::replace;
     use std::ops::Add;
 
     #[test]
-    fn test_repeat_monoid() {
+    fn repeat_monoid() {
         for n in 0..100000 {
-            assert_eq!(repeat_monoid(usize::add, n, 1, 0), n);
+            assert_eq!(super::repeat_monoid(usize::add, n, 1, 0), n);
         }
     }
 
@@ -53,10 +55,10 @@ mod tests {
     }
 
     #[test]
-    fn text_extended_gcd() {
+    fn extended_gcd() {
         for a in 1..800 {
             for b in 1..=a {
-                let (g, x, y) = extended_gcd(a, b);
+                let (g, x, y) = super::extended_gcd(a, b);
                 assert_eq!(g, a * x + b * y);
                 assert_eq!(g, gcd(a, b));
             }

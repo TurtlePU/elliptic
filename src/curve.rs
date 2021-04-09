@@ -1,4 +1,6 @@
 use std::{
+    fmt::Debug,
+    iter::Sum,
     marker::PhantomData,
     ops::{Add, Mul, Neg, Sub},
 };
@@ -15,11 +17,12 @@ pub trait Curve<F> {
     fn b() -> F;
 }
 
-fn check_solution<F, C>(x: F, y: F) -> bool
-where
-    F: Field,
-    C: Curve<F>,
-{
+pub fn check_char<F: Debug + Field>() {
+    assert_ne!(F::one() * 2, F::zero());
+    assert_ne!(F::one() * 3, F::zero());
+}
+
+fn check_solution<F: Field, C: Curve<F>>(x: F, y: F) -> bool {
     y.pow(2) == x.clone().pow(3) + C::a() * x + C::b()
 }
 
@@ -32,11 +35,7 @@ pub trait Points<F, C> {
     fn spatial(x: F, y: F, z: F) -> Result<EllipticPoint<F, C>, NotOnCurve>;
 }
 
-impl<F, C> Points<F, C> for C
-where
-    F: Field,
-    C: Curve<F>,
-{
+impl<F: Field, C: Curve<F>> Points<F, C> for C {
     fn projected(x: F, y: F) -> Result<EllipticPoint<F, C>, NotOnCurve> {
         if check_solution::<F, C>(x.clone(), y.clone()) {
             Ok(EllipticPoint::new(x, y))
@@ -71,39 +70,23 @@ impl<F, C> EllipticPoint<F, C> {
     }
 }
 
-impl<F, C> Group for EllipticPoint<F, C>
-where
-    F: Field,
-    C: Curve<F>,
-{
-}
+impl<F: Field, C: Curve<F>> Group for EllipticPoint<F, C> {}
 
-impl<F, C> Clone for EllipticPoint<F, C>
-where
-    F: Clone,
-{
+impl<F: Clone, C> Clone for EllipticPoint<F, C> {
     fn clone(&self) -> Self {
         Self::from_coords(self.coords.clone())
     }
 }
 
-impl<F, C> PartialEq for EllipticPoint<F, C>
-where
-    F: Field,
-    C: Curve<F>,
-{
+impl<F: PartialEq, C> PartialEq for EllipticPoint<F, C> {
     fn eq(&self, other: &Self) -> bool {
         self.coords == other.coords
     }
 }
 
-impl<F, C> Eq for EllipticPoint<F, C> where Self: PartialEq {}
+impl<F: Eq, C> Eq for EllipticPoint<F, C> {}
 
-impl<F, C> Add for EllipticPoint<F, C>
-where
-    F: Field,
-    C: Curve<F>,
-{
+impl<F: Field, C: Curve<F>> Add for EllipticPoint<F, C> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
@@ -127,11 +110,7 @@ where
     }
 }
 
-impl<F, C> Sub for EllipticPoint<F, C>
-where
-    F: Field,
-    C: Curve<F>,
-{
+impl<F: Field, C: Curve<F>> Sub for EllipticPoint<F, C> {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self::Output {
@@ -139,11 +118,7 @@ where
     }
 }
 
-impl<F, C> Neg for EllipticPoint<F, C>
-where
-    F: Field,
-    C: Curve<F>,
-{
+impl<F: Field, C: Curve<F>> Neg for EllipticPoint<F, C> {
     type Output = Self;
 
     fn neg(self) -> Self::Output {
@@ -154,11 +129,7 @@ where
     }
 }
 
-impl<F, C> Mul<isize> for EllipticPoint<F, C>
-where
-    F: Field,
-    C: Curve<F>,
-{
+impl<F: Field, C: Curve<F>> Mul<isize> for EllipticPoint<F, C> {
     type Output = Self;
 
     fn mul(self, rhs: isize) -> Self::Output {
@@ -170,11 +141,16 @@ where
     }
 }
 
-impl<F, C> Zero for EllipticPoint<F, C>
+impl<F: Field, C: Curve<F>> Sum for EllipticPoint<F, C>
 where
-    F: Field,
-    C: Curve<F>,
+    Self: Zero,
 {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.fold(Self::zero(), Self::add)
+    }
+}
+
+impl<F: Field, C: Curve<F>> Zero for EllipticPoint<F, C> {
     fn zero() -> Self {
         Self::from_coords(None)
     }

@@ -1,18 +1,25 @@
-use std::{iter::{Sum, repeat_with}, ops::{Add, Div, Mul, Neg, Rem, Sub}};
+use std::{
+    iter::{repeat_with, Sum},
+    ops::{Add, Div, Mul, Neg, Rem, Sub},
+};
 
-use itertools::{Itertools, EitherOrBoth::{self, *}};
+use itertools::{
+    EitherOrBoth::{self, *},
+    Itertools,
+};
 use num_traits::{One, Pow, Zero};
 
-use crate::{algo::repeat_monoid, traits::{Field, Group, Integral, Ring}};
+use crate::{
+    algo::repeat_monoid,
+    traits::{Field, Group, Ring},
+};
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Poly<T>(Vec<T>);
 
 impl<T> Group for Poly<T> where T: Group {}
 
-impl<T> Ring for Poly<T> where T: Field + Sum {}
-
-impl<T> Integral for Poly<T> where T: Field + Sum {}
+impl<T> Ring for Poly<T> where T: Field {}
 
 #[macro_export]
 macro_rules! poly {
@@ -26,7 +33,10 @@ impl<T> Poly<T> {
         self.0.len().max(1) - 1
     }
 
-    pub fn eldest_monome(&self) -> Option<Monome<T>> where T: Clone {
+    pub fn eldest_monome(&self) -> Option<Monome<T>>
+    where
+        T: Clone,
+    {
         self.0.last().map(|coeff| Monome {
             coeff: coeff.clone(),
             degree: self.degree(),
@@ -34,24 +44,29 @@ impl<T> Poly<T> {
     }
 
     pub fn apply_binop<F>(self, rhs: Self, op: F) -> Self
-    where T: Zero, F: Fn(EitherOrBoth<T, T>) -> T
+    where
+        T: Zero,
+        F: Fn(EitherOrBoth<T, T>) -> T,
     {
-        let mut reversed_trimmed =
-            self.0.into_iter()
-                .zip_longest(rhs.0.into_iter())
-                .map(op)
-                .rev()
-                .skip_while(T::is_zero)
-                .collect::<Vec<_>>();
+        let mut reversed_trimmed = self
+            .0
+            .into_iter()
+            .zip_longest(rhs.0.into_iter())
+            .map(op)
+            .rev()
+            .skip_while(T::is_zero)
+            .collect::<Vec<_>>();
         reversed_trimmed.reverse();
         Poly(reversed_trimmed)
     }
 
-    fn div_rem(mut self, rhs: Self) -> (Self, Self) where T: Field {
+    fn div_rem(mut self, rhs: Self) -> (Self, Self)
+    where
+        T: Field,
+    {
         let mut ans_monomes = Vec::new();
         while self.degree() >= rhs.degree() {
-            let monome = self.eldest_monome().unwrap() /
-                         rhs.eldest_monome().unwrap();
+            let monome = self.eldest_monome().unwrap() / rhs.eldest_monome().unwrap();
             ans_monomes.push(monome.clone());
             self = self - monome * rhs.clone();
         }
@@ -59,13 +74,13 @@ impl<T> Poly<T> {
     }
 }
 
-impl<T> Default for Poly<T> where T: Zero {
+impl<T: Group> Default for Poly<T> {
     fn default() -> Self {
         Self::zero()
     }
 }
 
-impl<T> From<T> for Poly<T> where T: Zero {
+impl<T: Group> From<T> for Poly<T> {
     fn from(coeff: T) -> Self {
         if coeff.is_zero() {
             Self::zero()
@@ -75,7 +90,7 @@ impl<T> From<T> for Poly<T> where T: Zero {
     }
 }
 
-impl<T> From<Vec<T>> for Poly<T> where T: Zero {
+impl<T: Zero> From<Vec<T>> for Poly<T> {
     fn from(mut coeffs: Vec<T>) -> Self {
         let mut n = coeffs.len();
         while n > 0 {
@@ -89,7 +104,7 @@ impl<T> From<Vec<T>> for Poly<T> where T: Zero {
     }
 }
 
-impl<T> From<Vec<Monome<T>>> for Poly<T> where T: Zero {
+impl<T: Zero> From<Vec<Monome<T>>> for Poly<T> {
     fn from(monomes: Vec<Monome<T>>) -> Self {
         let mut container = Vec::with_capacity(monomes.len());
         for Monome { coeff, degree } in monomes {
@@ -102,7 +117,7 @@ impl<T> From<Vec<Monome<T>>> for Poly<T> where T: Zero {
     }
 }
 
-impl<T> Add for Poly<T> where T: Add<Output = T> + Zero {
+impl<T: Group> Add for Poly<T> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
@@ -113,7 +128,7 @@ impl<T> Add for Poly<T> where T: Add<Output = T> + Zero {
     }
 }
 
-impl<T> Sub for Poly<T> where T: Sub<Output = T> + Zero {
+impl<T: Group> Sub for Poly<T> {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self::Output {
@@ -125,7 +140,7 @@ impl<T> Sub for Poly<T> where T: Sub<Output = T> + Zero {
     }
 }
 
-impl<T> Neg for Poly<T> where T: Neg {
+impl<T: Neg> Neg for Poly<T> {
     type Output = Poly<T::Output>;
 
     fn neg(self) -> Self::Output {
@@ -133,7 +148,7 @@ impl<T> Neg for Poly<T> where T: Neg {
     }
 }
 
-impl<T> Mul<isize> for Poly<T> where T: Mul<isize, Output = T> {
+impl<T: Group> Mul<isize> for Poly<T> {
     type Output = Self;
 
     fn mul(self, rhs: isize) -> Self::Output {
@@ -141,7 +156,13 @@ impl<T> Mul<isize> for Poly<T> where T: Mul<isize, Output = T> {
     }
 }
 
-impl<T> Mul for Poly<T> where T: Mul<Output = T> + Clone + Sum {
+impl<T: Group> Sum for Poly<T> {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.fold(Self::zero(), Self::add)
+    }
+}
+
+impl<T: Field> Mul for Poly<T> {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
@@ -165,7 +186,7 @@ impl<T> Mul for Poly<T> where T: Mul<Output = T> + Clone + Sum {
     }
 }
 
-impl<T> Pow<u32> for Poly<T> where Self: Clone + One + Mul<Output = Self> {
+impl<T: Field> Pow<u32> for Poly<T> {
     type Output = Self;
 
     fn pow(self, rhs: u32) -> Self::Output {
@@ -173,7 +194,7 @@ impl<T> Pow<u32> for Poly<T> where Self: Clone + One + Mul<Output = Self> {
     }
 }
 
-impl<T> Div for Poly<T> where T: Field {
+impl<T: Field> Div for Poly<T> {
     type Output = Self;
 
     fn div(self, rhs: Self) -> Self::Output {
@@ -181,7 +202,7 @@ impl<T> Div for Poly<T> where T: Field {
     }
 }
 
-impl<T> Rem for Poly<T> where T: Field {
+impl<T: Field> Rem for Poly<T> {
     type Output = Self;
 
     fn rem(self, rhs: Self) -> Self::Output {
@@ -189,7 +210,7 @@ impl<T> Rem for Poly<T> where T: Field {
     }
 }
 
-impl<T> Zero for Poly<T> where T: Zero {
+impl<T: Group> Zero for Poly<T> {
     fn zero() -> Self {
         Self(Vec::default())
     }
@@ -199,7 +220,7 @@ impl<T> Zero for Poly<T> where T: Zero {
     }
 }
 
-impl<T> One for Poly<T> where T: One, Self: Mul<Output = Self> {
+impl<T: Field> One for Poly<T> {
     fn one() -> Self {
         Self(vec![T::one()])
     }
@@ -211,7 +232,7 @@ pub struct Monome<T> {
     degree: usize,
 }
 
-impl<T> Div for Monome<T> where T: Div<Output = T> {
+impl<T: Field> Div for Monome<T> {
     type Output = Self;
 
     fn div(self, rhs: Self) -> Self::Output {
@@ -223,7 +244,7 @@ impl<T> Div for Monome<T> where T: Div<Output = T> {
     }
 }
 
-impl<T> Mul<Poly<T>> for Monome<T> where T: Mul<Output = T> + Zero + Clone {
+impl<T: Field> Mul<Poly<T>> for Monome<T> {
     type Output = Poly<T>;
 
     fn mul(self, rhs: Poly<T>) -> Self::Output {
