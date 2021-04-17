@@ -1,15 +1,16 @@
-use super::schemes::*;
+use super::{encapsulation::*, schemes::*};
 
-pub struct StreamEncryption<S>(S);
+pub struct StreamScheme<S>(S);
 pub struct StreamMapper<T>(T);
+pub struct StreamCapsule<T>(T);
 
-impl<S> From<S> for StreamEncryption<S> {
+impl<S> From<S> for StreamScheme<S> {
     fn from(scheme: S) -> Self {
         Self(scheme)
     }
 }
 
-impl<S, M, C> PublicKeyEncryption<Vec<M>, Vec<C>> for StreamEncryption<S>
+impl<S, M, C> PublicKeyEncryption<Vec<M>, Vec<C>> for StreamScheme<S>
 where
     S: PublicKeyEncryption<M, C>,
 {
@@ -42,7 +43,7 @@ where
     }
 }
 
-impl<S, M, C> PrivateKeyEncryption<Vec<M>, Vec<C>> for StreamEncryption<S>
+impl<S, M, C> PrivateKeyEncryption<Vec<M>, Vec<C>> for StreamScheme<S>
 where
     S: PrivateKeyEncryption<M, C>,
 {
@@ -56,4 +57,33 @@ where
 impl<P, M, C> PrivateKey<Vec<M>, Vec<C>> for StreamMapper<P> where
     P: PrivateKey<M, C>
 {
+}
+
+impl<E, C> KeyEncapsulation<C> for StreamScheme<E> where E: KeyEncapsulation<C> {
+    type Key = StreamMapper<E::Key>;
+    type Encaps = StreamCapsule<E::Encaps>;
+    type Decaps = StreamCapsule<E::Decaps>;
+
+    fn generate_caps(&mut self, n: usize) -> (Self::Encaps, Self::Decaps) {
+        let (enc, dec) = self.0.generate_caps(n);
+        (StreamCapsule(enc), StreamCapsule(dec))
+    }
+}
+
+impl<E, C> Encapsulator<C> for StreamCapsule<E> where E: Encapsulator<C> {
+    type Key = StreamMapper<E::Key>;
+
+    fn encapsulate(&mut self, n: usize) -> (Self::Key, C) {
+        let (key, c) = self.0.encapsulate(n);
+        (StreamMapper(key), c)
+    }
+}
+
+impl<E, C> Decapsulator<C> for StreamCapsule<E> where E: Decapsulator<C> {
+    type Key = StreamMapper<E::Key>;
+    type Error = E::Error;
+
+    fn decapsulate(&self, cipher: C) -> Result<Self::Key, Self::Error> {
+        self.0.decapsulate(cipher).map(StreamMapper)
+    }
 }
