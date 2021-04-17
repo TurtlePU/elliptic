@@ -11,6 +11,10 @@ pub trait BasicGroup: Value + Zero + Add<Output = Self> + Neg<Output = Self> {}
 
 pub trait Group: BasicGroup + Sub<Output = Self> + Mul<isize, Output = Self> + Sum {}
 
+pub trait FinGroup: Group {
+    const ORDER: usize;
+}
+
 pub trait Ring: Group + One + Mul<Output = Self> + Pow<u32, Output = Self> {}
 
 pub trait Integral: Ring + Div<Output = Self> + Rem<Output = Self> {}

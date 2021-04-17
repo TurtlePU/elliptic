@@ -10,10 +10,12 @@ use rand::{distributions::Standard, prelude::Distribution};
 
 use super::{
     algo::repeat_monoid,
-    traits::{Field, Group},
+    traits::{Field, FinGroup, Group},
 };
 
 pub trait Curve<F> {
+    const ORDER: usize;
+
     fn a() -> F;
     fn b() -> F;
 }
@@ -107,6 +109,10 @@ impl<F: Field, C> From<EllipticPoint<F, C>> for (F, F) {
 }
 
 impl<F: Field, C: Curve<F>> Group for EllipticPoint<F, C> {}
+
+impl<F: Field, C: Curve<F>> FinGroup for EllipticPoint<F, C> {
+    const ORDER: usize = C::ORDER;
+}
 
 impl<F: Clone, C> Clone for EllipticPoint<F, C> {
     fn clone(&self) -> Self {

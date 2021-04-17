@@ -15,13 +15,17 @@ use rand::{
 
 use crate::algebra::{
     algo::extended_gcd,
-    traits::{Field, Group, Ring},
+    traits::{Field, FinGroup, Group, Ring},
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Zn<const N: usize>(usize);
 
 impl<const N: usize> Group for Zn<N> {}
+
+impl<const N: usize> FinGroup for Zn<N> {
+    const ORDER: usize = N;
+}
 
 impl<const N: usize> Ring for Zn<N> {}
 

@@ -10,6 +10,8 @@ use rand::{distributions::Standard, prelude::Distribution, Fill};
 use crate::algebra::{algo::extended_gcd, poly::Poly, traits::*};
 
 pub trait Irreducible<T> {
+    const MOD_LEN: u32;
+
     fn modulo() -> Poly<T>;
 }
 
@@ -47,6 +49,15 @@ where
     I: Irreducible<T>,
     Poly<T>: Integral,
 {
+}
+
+impl<T, I> FinGroup for PolyField<T, I>
+where
+    I: Irreducible<T>,
+    Poly<T>: Integral,
+    T: FinGroup,
+{
+    const ORDER: usize = T::ORDER.pow(I::MOD_LEN);
 }
 
 impl<T, I> Ring for PolyField<T, I>
