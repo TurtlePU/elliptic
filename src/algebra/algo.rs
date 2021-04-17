@@ -1,4 +1,4 @@
-use crate::traits::Integral;
+use super::traits::Integral;
 
 /// Returns (g, x, y) such that a * x + b * y = g = gcd(a, b).
 pub fn extended_gcd<T: Integral>(a: T, b: T) -> (T, T, T) {

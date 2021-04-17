@@ -7,7 +7,7 @@ use std::{
 
 use num_traits::Zero;
 
-use crate::{
+use super::{
     algo::repeat_monoid,
     traits::{Field, Group},
 };

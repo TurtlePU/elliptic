@@ -6,7 +6,7 @@ use std::{
 
 use num_traits::{Inv, One, Pow, Zero};
 
-use crate::{
+use crate::algebra::{
     algo::extended_gcd,
     traits::{Field, Group, Ring},
 };

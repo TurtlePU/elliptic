@@ -6,7 +6,7 @@ use std::{
 
 use num_traits::{Inv, One, Pow, Zero};
 
-use crate::{algo::extended_gcd, poly::Poly, traits::*};
+use crate::algebra::{algo::extended_gcd, poly::Poly, traits::*};
 
 pub trait Irreducible<T> {
     fn modulo() -> Poly<T>;

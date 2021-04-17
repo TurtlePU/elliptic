@@ -9,7 +9,7 @@ use itertools::{
 };
 use num_traits::{One, Pow, Zero};
 
-use crate::{
+use super::{
     algo::repeat_monoid,
     traits::{Field, Group, Ring},
 };
