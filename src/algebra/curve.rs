@@ -6,6 +6,7 @@ use std::{
 };
 
 use num_traits::Zero;
+use rand::{distributions::Standard, prelude::Distribution};
 
 use super::{
     algo::repeat_monoid,
@@ -63,6 +64,22 @@ impl<F, C> EllipticPoint<F, C> {
         Self {
             coords,
             curve: PhantomData,
+        }
+    }
+}
+
+impl<F: Field, C: Curve<F>> Distribution<EllipticPoint<F, C>> for Standard
+where
+    Standard: Distribution<F>,
+{
+    fn sample<R: rand::Rng + ?Sized>(
+        &self,
+        rng: &mut R,
+    ) -> EllipticPoint<F, C> {
+        loop {
+            if let Ok(point) = C::affine(rng.gen(), rng.gen()) {
+                break point;
+            }
         }
     }
 }

@@ -8,6 +8,7 @@ use itertools::{
     Itertools,
 };
 use num_traits::{One, Pow, Zero};
+use rand::{distributions::Standard, prelude::Distribution, Error, Fill, Rng};
 
 use super::{
     algo::repeat_monoid,
@@ -115,6 +116,18 @@ impl<T: Zero> From<Vec<Monome<T>>> for Poly<T> {
             container[degree] = coeff;
         }
         Self(container)
+    }
+}
+
+impl<T> Fill for Poly<T>
+where
+    Standard: Distribution<T>,
+{
+    fn try_fill<R: Rng + ?Sized>(&mut self, rng: &mut R) -> Result<(), Error> {
+        for x in &mut self.0 {
+            *x = rng.gen();
+        }
+        Ok(())
     }
 }
 

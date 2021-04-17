@@ -5,6 +5,13 @@ use std::{
 };
 
 use num_traits::{Inv, One, Pow, Zero};
+use rand::{
+    distributions::{
+        uniform::{SampleUniform, UniformInt, UniformSampler},
+        Standard,
+    },
+    prelude::Distribution,
+};
 
 use crate::algebra::{
     algo::extended_gcd,
@@ -23,6 +30,18 @@ impl<const N: usize> Field for Zn<N> {}
 impl<const N: usize> From<usize> for Zn<N> {
     fn from(n: usize) -> Self {
         Self(n % N)
+    }
+}
+
+impl<'a, const N: usize> From<&'a Zn<N>> for usize {
+    fn from(zn: &'a Zn<N>) -> Self {
+        zn.0
+    }
+}
+
+impl<const N: usize> Distribution<Zn<N>> for Standard {
+    fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> Zn<N> {
+        Zn::from(rng.gen::<usize>())
     }
 }
 
@@ -120,4 +139,38 @@ impl<const N: usize> One for Zn<N> {
     fn one() -> Self {
         Self::from(1)
     }
+}
+
+pub struct UniformZn<const N: usize>(UniformInt<usize>);
+
+impl<const N: usize> UniformSampler for UniformZn<N> {
+    type X = Zn<N>;
+
+    fn new<B1, B2>(low: B1, high: B2) -> Self
+    where
+        B1: rand::distributions::uniform::SampleBorrow<Self::X> + Sized,
+        B2: rand::distributions::uniform::SampleBorrow<Self::X> + Sized,
+    {
+        let (low, high): (usize, usize) =
+            (low.borrow().into(), high.borrow().into());
+        Self(UniformInt::new(low, high))
+    }
+
+    fn new_inclusive<B1, B2>(low: B1, high: B2) -> Self
+    where
+        B1: rand::distributions::uniform::SampleBorrow<Self::X> + Sized,
+        B2: rand::distributions::uniform::SampleBorrow<Self::X> + Sized,
+    {
+        let (low, high): (usize, usize) =
+            (low.borrow().into(), high.borrow().into());
+        Self(UniformInt::new_inclusive(low, high))
+    }
+
+    fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> Self::X {
+        Zn::from(self.0.sample(rng))
+    }
+}
+
+impl<const N: usize> SampleUniform for Zn<N> {
+    type Sampler = UniformZn<N>;
 }

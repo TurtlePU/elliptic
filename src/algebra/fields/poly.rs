@@ -5,6 +5,7 @@ use std::{
 };
 
 use num_traits::{Inv, One, Pow, Zero};
+use rand::{distributions::Standard, prelude::Distribution, Fill};
 
 use crate::algebra::{algo::extended_gcd, poly::Poly, traits::*};
 
@@ -28,6 +29,18 @@ where
 
 #[derive(Debug)]
 pub struct PolyField<T, I>(Poly<T>, PhantomData<I>);
+
+impl<T, I> Distribution<PolyField<T, I>> for Standard
+where
+    I: Irreducible<T>,
+    Poly<T>: Integral + Fill,
+{
+    fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> PolyField<T, I> {
+        let mut result = I::modulo();
+        result.try_fill(rng).unwrap();
+        I::into_field(result)
+    }
+}
 
 impl<T, I> Group for PolyField<T, I>
 where
