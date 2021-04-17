@@ -66,7 +66,8 @@ impl<T> Poly<T> {
     {
         let mut ans_monomes = Vec::new();
         while self.degree() >= rhs.degree() {
-            let monome = self.eldest_monome().unwrap() / rhs.eldest_monome().unwrap();
+            let monome =
+                self.eldest_monome().unwrap() / rhs.eldest_monome().unwrap();
             ans_monomes.push(monome.clone());
             self = self - monome * rhs.clone();
         }
