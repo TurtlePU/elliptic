@@ -59,7 +59,10 @@ impl<P, M, C> PrivateKey<Vec<M>, Vec<C>> for StreamMapper<P> where
 {
 }
 
-impl<E, C> KeyEncapsulation<C> for StreamScheme<E> where E: KeyEncapsulation<C> {
+impl<E, C> KeyEncapsulation<C> for StreamScheme<E>
+where
+    E: KeyEncapsulation<C>,
+{
     type Key = StreamMapper<E::Key>;
     type Encaps = StreamCapsule<E::Encaps>;
     type Decaps = StreamCapsule<E::Decaps>;
@@ -70,7 +73,10 @@ impl<E, C> KeyEncapsulation<C> for StreamScheme<E> where E: KeyEncapsulation<C> 
     }
 }
 
-impl<E, C> Encapsulator<C> for StreamCapsule<E> where E: Encapsulator<C> {
+impl<E, C> Encapsulator<C> for StreamCapsule<E>
+where
+    E: Encapsulator<C>,
+{
     type Key = StreamMapper<E::Key>;
 
     fn encapsulate(&mut self, n: usize) -> (Self::Key, C) {
@@ -79,7 +85,10 @@ impl<E, C> Encapsulator<C> for StreamCapsule<E> where E: Encapsulator<C> {
     }
 }
 
-impl<E, C> Decapsulator<C> for StreamCapsule<E> where E: Decapsulator<C> {
+impl<E, C> Decapsulator<C> for StreamCapsule<E>
+where
+    E: Decapsulator<C>,
+{
     type Key = StreamMapper<E::Key>;
     type Error = E::Error;
 
