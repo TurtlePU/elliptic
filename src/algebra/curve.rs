@@ -14,43 +14,22 @@ use super::{
     traits::{Field, FinGroup, Group},
 };
 
-pub trait Curve<F> {
+pub trait Curve<F: Field>: Sized {
     fn order() -> BigUint;
     fn a() -> F;
     fn b() -> F;
-}
 
-pub fn check_char<F: Debug + Field>() {
-    assert_ne!(F::one() * 2, F::zero());
-    assert_ne!(F::one() * 3, F::zero());
-}
-
-pub fn check_curve<F: Debug + Field, C: Curve<F>>() {
-    check_char::<F>();
-    let prop = C::a().pow(3) * 4 + C::b().pow(2) * 27;
-    assert_ne!(prop, F::zero());
-}
-
-fn check_solution<F: Field, C: Curve<F>>(x: F, y: F) -> bool {
-    y.pow(2) == x.clone().pow(3) + C::a() * x + C::b()
-}
-
-#[derive(Debug)]
-pub struct NotOnCurve;
-
-pub trait Points<F, C> {
-    fn affine(x: F, y: F) -> Result<EllipticPoint<F, C>, NotOnCurve>;
-}
-
-impl<F: Field, C: Curve<F>> Points<F, C> for C {
-    fn affine(x: F, y: F) -> Result<EllipticPoint<F, C>, NotOnCurve> {
-        if check_solution::<F, C>(x.clone(), y.clone()) {
+    fn affine(x: F, y: F) -> Result<EllipticPoint<F, Self>, NotOnCurve> {
+        if check_solution::<F, Self>(x.clone(), y.clone()) {
             Ok(EllipticPoint::new(x, y, F::one()))
         } else {
             Err(NotOnCurve)
         }
     }
 }
+
+#[derive(Debug)]
+pub struct NotOnCurve;
 
 pub struct EllipticPoint<F, C> {
     coords: (F, F, F),
@@ -229,4 +208,19 @@ impl<F: Field, C: Curve<F>> Zero for EllipticPoint<F, C> {
     fn is_zero(&self) -> bool {
         self.coords.2.is_zero()
     }
+}
+
+pub fn check_char<F: Debug + Field>() {
+    assert_ne!(F::one() * 2, F::zero());
+    assert_ne!(F::one() * 3, F::zero());
+}
+
+pub fn check_curve<F: Debug + Field, C: Curve<F>>() {
+    check_char::<F>();
+    let prop = C::a().pow(3) * 4 + C::b().pow(2) * 27;
+    assert_ne!(prop, F::zero());
+}
+
+fn check_solution<F: Field, C: Curve<F>>(x: F, y: F) -> bool {
+    y.pow(2) == x.clone().pow(3) + C::a() * x + C::b()
 }

@@ -10,20 +10,10 @@ use rand::{distributions::Standard, prelude::Distribution, Fill};
 
 use crate::algebra::{algo::extended_gcd, poly::Poly, traits::*};
 
-pub trait Irreducible<T> {
+pub trait Irreducible<T>: Sized where Poly<T>: Integral {
     fn modulo() -> Poly<T>;
-}
 
-pub trait IntoField<T, I> {
-    fn into_field(poly: Poly<T>) -> PolyField<T, I>;
-}
-
-impl<T, I> IntoField<T, I> for I
-where
-    I: Irreducible<T>,
-    Poly<T>: Integral,
-{
-    fn into_field(poly: Poly<T>) -> PolyField<T, I> {
+    fn into_field(poly: Poly<T>) -> PolyField<T, Self> {
         PolyField(poly % Self::modulo(), PhantomData)
     }
 }
