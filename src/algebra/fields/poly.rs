@@ -8,9 +8,17 @@ use num_bigint::BigUint;
 use num_traits::{Inv, One, Pow, Zero};
 use rand::{distributions::Standard, prelude::Distribution, Fill};
 
-use crate::algebra::{algo::extended_gcd, poly::Poly, traits::*};
+use crate::{
+    algebra::{algo::extended_gcd, poly::Poly, traits::*},
+    bytes::{ByteCnt, FromBytes, FromBytesInfallible, ToBytes},
+};
 
-pub trait Irreducible<T>: Sized where Poly<T>: Integral {
+pub trait DenseBytes {}
+
+pub trait Irreducible<T>: Sized
+where
+    Poly<T>: Integral,
+{
     fn modulo() -> Poly<T>;
 
     fn into_field(poly: Poly<T>) -> PolyField<T, Self> {
@@ -30,6 +38,36 @@ where
         let mut result = I::modulo();
         result.try_fill(rng).unwrap();
         I::into_field(result)
+    }
+}
+
+impl<T, I> FromBytes for PolyField<T, I>
+where
+    I: Irreducible<T> + DenseBytes,
+    T: FromBytes + ByteCnt + Zero,
+    Poly<T>: Integral,
+{
+    type Error = T::Error;
+
+    fn from_bytes(bytes: &[u8]) -> Result<Self, Self::Error> {
+        Ok(I::into_field(Vec::<T>::from_bytes(bytes)?.into()))
+    }
+}
+
+impl<T, I> FromBytesInfallible for PolyField<T, I>
+where
+    I: Irreducible<T> + DenseBytes,
+    T: FromBytesInfallible + ByteCnt + Zero,
+    Poly<T>: Integral,
+{
+    fn from_bytes(bytes: &[u8]) -> Self {
+        I::into_field(Vec::<T>::from_bytes(bytes).into())
+    }
+}
+
+impl<T: ToBytes, I: DenseBytes> ToBytes for PolyField<T, I> {
+    fn to_bytes(self) -> Vec<u8> {
+        Vec::<_>::from(self.0).to_bytes()
     }
 }
 

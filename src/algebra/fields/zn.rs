@@ -1,4 +1,5 @@
 use std::{
+    array::TryFromSliceError,
     convert::TryInto,
     iter::Sum,
     ops::{Add, Div, Mul, Neg, Sub},
@@ -14,10 +15,15 @@ use rand::{
     prelude::Distribution,
 };
 
-use crate::algebra::{
-    algo::extended_gcd,
-    traits::{Field, FinGroup, Group, Ring},
+use crate::{
+    algebra::{
+        algo::extended_gcd,
+        traits::{Field, FinGroup, Group, Ring},
+    },
+    bytes::{ByteCnt, FromBytes, FromBytesInfallible, ToBytes},
 };
+
+const BYTES: usize = std::mem::size_of::<usize>();
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Zn<const N: usize>(usize);
@@ -40,8 +46,38 @@ impl<const N: usize> From<usize> for Zn<N> {
     }
 }
 
-impl<'a, const N: usize> From<&'a Zn<N>> for usize {
-    fn from(zn: &'a Zn<N>) -> Self {
+impl<const N: usize> FromBytes for Zn<N> {
+    type Error = TryFromSliceError;
+
+    fn from_bytes(bytes: &[u8]) -> Result<Self, Self::Error> {
+        let mut bytes: Vec<u8> = bytes.into();
+        if bytes.len() < BYTES {
+            bytes.resize(BYTES, 0);
+        }
+        Ok(Self::from(usize::from_be_bytes(bytes[..].try_into()?)))
+    }
+}
+
+impl<const N: usize> FromBytesInfallible for Zn<N> {
+    fn from_bytes(bytes: &[u8]) -> Self {
+        <Self as FromBytes>::from_bytes(bytes).unwrap()
+    }
+}
+
+impl<const N: usize> ToBytes for Zn<N> {
+    fn to_bytes(self) -> Vec<u8> {
+        let mut ans: Vec<_> = self.0.to_be_bytes().into();
+        ans.truncate(Self::BYTE_CNT);
+        ans
+    }
+}
+
+impl<const N: usize> ByteCnt for Zn<N> {
+    const BYTE_CNT: usize = BYTES - N.leading_zeros() as usize / 8;
+}
+
+impl<const N: usize> From<Zn<N>> for usize {
+    fn from(zn: Zn<N>) -> Self {
         zn.0
     }
 }
@@ -159,7 +195,7 @@ impl<const N: usize> UniformSampler for UniformZn<N> {
         B2: rand::distributions::uniform::SampleBorrow<Self::X> + Sized,
     {
         let (low, high): (usize, usize) =
-            (low.borrow().into(), high.borrow().into());
+            (low.borrow().clone().into(), high.borrow().clone().into());
         Self(UniformInt::new(low, high))
     }
 
@@ -169,7 +205,7 @@ impl<const N: usize> UniformSampler for UniformZn<N> {
         B2: rand::distributions::uniform::SampleBorrow<Self::X> + Sized,
     {
         let (low, high): (usize, usize) =
-            (low.borrow().into(), high.borrow().into());
+            (low.borrow().clone().into(), high.borrow().clone().into());
         Self(UniformInt::new_inclusive(low, high))
     }
 

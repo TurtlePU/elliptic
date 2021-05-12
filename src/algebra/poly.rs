@@ -119,6 +119,12 @@ impl<T: Zero> From<Vec<Monome<T>>> for Poly<T> {
     }
 }
 
+impl<T> From<Poly<T>> for Vec<T> {
+    fn from(poly: Poly<T>) -> Self {
+        poly.0
+    }
+}
+
 impl<T> Fill for Poly<T>
 where
     Standard: Distribution<T>,
