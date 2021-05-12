@@ -41,6 +41,46 @@ impl<T: FromBytesInfallible + ByteCnt> FromBytesInfallible for Vec<T> {
     }
 }
 
+impl<T: FromBytes + ByteCnt, U: FromBytes> FromBytes for (T, U) {
+    type Error = Either<T::Error, U::Error>;
+
+    fn from_bytes(bytes: &[u8]) -> Result<Self, Self::Error> {
+        let (left, right) = bytes.split_at(T::BYTE_CNT);
+        Ok((
+            T::from_bytes(left).map_err(Either::Left)?,
+            U::from_bytes(right).map_err(Either::Right)?,
+        ))
+    }
+}
+
+pub enum Either<L, R> {
+    Left(L),
+    Right(R),
+}
+
+impl<T, U> FromBytesInfallible for (T, U)
+where
+    T: FromBytesInfallible + ByteCnt,
+    U: FromBytesInfallible,
+{
+    fn from_bytes(bytes: &[u8]) -> Self {
+        let (left, right) = bytes.split_at(T::BYTE_CNT);
+        (T::from_bytes(left), U::from_bytes(right))
+    }
+}
+
+impl<T: ToBytes, U: ToBytes> ToBytes for (T, U) {
+    fn to_bytes(self) -> Vec<u8> {
+        let mut ans = self.0.to_bytes();
+        ans.extend(self.1.to_bytes());
+        ans
+    }
+}
+
+impl<T: ByteCnt, U: ByteCnt> ByteCnt for (T, U) {
+    const BYTE_CNT: usize = T::BYTE_CNT + U::BYTE_CNT;
+}
+
 const BYTE_BIT: usize = 8;
 
 pub fn bitvec_from_bytes(bytes: &[u8]) -> Vec<Zn<2>> {
