@@ -10,10 +10,12 @@ impl<S> From<S> for StreamScheme<S> {
     }
 }
 
-impl<S, M, C> PublicKeyEncryption<Vec<M>, Vec<C>> for StreamScheme<S>
-where
-    S: PublicKeyEncryption<M, C>,
-{
+impl<S: Enc> Enc for StreamScheme<S> {
+    type Message = Vec<S::Message>;
+    type Cipher = Vec<S::Cipher>;
+}
+
+impl<S: PublicKeyEncryption> PublicKeyEncryption for StreamScheme<S> {
     type PublicKey = StreamMapper<S::PublicKey>;
     type Secret = StreamMapper<S::Secret>;
 
@@ -23,30 +25,29 @@ where
     }
 }
 
-impl<E, M, C> Encryptor<Vec<M>, Vec<C>> for StreamMapper<E>
-where
-    E: Encryptor<M, C>,
-{
-    fn encrypt(&mut self, message: Vec<M>) -> Vec<C> {
+impl<E: Enc> Enc for StreamMapper<E> {
+    type Message = Vec<E::Message>;
+    type Cipher = Vec<E::Cipher>;
+}
+
+impl<E: Encryptor> Encryptor for StreamMapper<E> {
+    fn encrypt(&mut self, message: Self::Message) -> Self::Cipher {
         message.into_iter().map(|x| self.0.encrypt(x)).collect()
     }
 }
 
-impl<D, M, C> Decryptor<Vec<M>, Vec<C>> for StreamMapper<D>
-where
-    D: Decryptor<M, C>,
-{
+impl<D: Decryptor> Decryptor for StreamMapper<D> {
     type Error = D::Error;
 
-    fn decrypt(&self, cipher: Vec<C>) -> Result<Vec<M>, Self::Error> {
+    fn decrypt(
+        &self,
+        cipher: Self::Cipher,
+    ) -> Result<Self::Message, Self::Error> {
         cipher.into_iter().map(|x| self.0.decrypt(x)).collect()
     }
 }
 
-impl<S, M, C> PrivateKeyEncryption<Vec<M>, Vec<C>> for StreamScheme<S>
-where
-    S: PrivateKeyEncryption<M, C>,
-{
+impl<S: PrivateKeyEncryption> PrivateKeyEncryption for StreamScheme<S> {
     type Secret = StreamMapper<S::Secret>;
 
     fn generate_key(&mut self, n: usize) -> Self::Secret {
@@ -54,16 +55,14 @@ where
     }
 }
 
-impl<P, M, C> PrivateKey<Vec<M>, Vec<C>> for StreamMapper<P> where
-    P: PrivateKey<M, C>
-{
+impl<K: PrivateKey> PrivateKey for StreamMapper<K> {}
+
+impl<E: Caps> Caps for StreamScheme<E> {
+    type Key = StreamMapper<E::Key>;
+    type Cipher = E::Cipher;
 }
 
-impl<E, C> KeyEncapsulation<C> for StreamScheme<E>
-where
-    E: KeyEncapsulation<C>,
-{
-    type Key = StreamMapper<E::Key>;
+impl<E: KeyEncapsulation> KeyEncapsulation for StreamScheme<E> {
     type Encaps = StreamCapsule<E::Encaps>;
     type Decaps = StreamCapsule<E::Decaps>;
 
@@ -73,26 +72,25 @@ where
     }
 }
 
-impl<E, C> Encapsulator<C> for StreamCapsule<E>
-where
-    E: Encapsulator<C>,
-{
+impl<E: Caps> Caps for StreamCapsule<E> {
     type Key = StreamMapper<E::Key>;
+    type Cipher = E::Cipher;
+}
 
-    fn encapsulate(&mut self, n: usize) -> (Self::Key, C) {
+impl<E: Encapsulator> Encapsulator for StreamCapsule<E> {
+    fn encapsulate(&mut self, n: usize) -> (Self::Key, Self::Cipher) {
         let (key, c) = self.0.encapsulate(n);
         (StreamMapper(key), c)
     }
 }
 
-impl<E, C> Decapsulator<C> for StreamCapsule<E>
-where
-    E: Decapsulator<C>,
-{
-    type Key = StreamMapper<E::Key>;
+impl<E: Decapsulator> Decapsulator for StreamCapsule<E> {
     type Error = E::Error;
 
-    fn decapsulate(&self, cipher: C) -> Result<Self::Key, Self::Error> {
+    fn decapsulate(
+        &self,
+        cipher: Self::Cipher,
+    ) -> Result<Self::Key, Self::Error> {
         self.0.decapsulate(cipher).map(StreamMapper)
     }
 }

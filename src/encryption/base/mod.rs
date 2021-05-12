@@ -10,11 +10,11 @@ pub mod hybrid;
 pub mod schemes;
 pub mod streaming;
 
-pub fn hybrid_streaming<K, M, C1, C2>(
-    scheme: impl KeyEncapsulation<C1, Key = K>,
-) -> impl PublicKeyEncryption<Vec<M>, (C1, Vec<C2>)>
+pub fn hybrid_streaming<K>(
+    scheme: impl KeyEncapsulation<Key = K>,
+) -> impl PublicKeyEncryption
 where
-    K: PrivateKey<M, C2>,
+    K: PrivateKey,
 {
     HybridEncryption::from(StreamScheme::from(scheme))
 }

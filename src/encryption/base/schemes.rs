@@ -1,27 +1,32 @@
-pub trait PublicKeyEncryption<Message, Cipher> {
-    type PublicKey: Encryptor<Message, Cipher>;
-    type Secret: Decryptor<Message, Cipher>;
+pub trait Enc {
+    type Message;
+    type Cipher;
+}
+
+pub trait PublicKeyEncryption: Enc {
+    type PublicKey: Encryptor<Message = Self::Message, Cipher = Self::Cipher>;
+    type Secret: Decryptor<Message = Self::Message, Cipher = Self::Cipher>;
 
     fn generate_keys(&mut self, n: usize) -> (Self::PublicKey, Self::Secret);
 }
 
-pub trait Encryptor<Message, Cipher> {
-    fn encrypt(&mut self, message: Message) -> Cipher;
+pub trait Encryptor: Enc {
+    fn encrypt(&mut self, message: Self::Message) -> Self::Cipher;
 }
 
-pub trait Decryptor<Message, Cipher> {
+pub trait Decryptor: Enc {
     type Error;
 
-    fn decrypt(&self, cipher: Cipher) -> Result<Message, Self::Error>;
+    fn decrypt(
+        &self,
+        cipher: Self::Cipher,
+    ) -> Result<Self::Message, Self::Error>;
 }
 
-pub trait PrivateKeyEncryption<Message, Cipher> {
-    type Secret: PrivateKey<Message, Cipher>;
+pub trait PrivateKeyEncryption {
+    type Secret: PrivateKey;
 
     fn generate_key(&mut self, n: usize) -> Self::Secret;
 }
 
-pub trait PrivateKey<Message, Cipher>:
-    Encryptor<Message, Cipher> + Decryptor<Message, Cipher>
-{
-}
+pub trait PrivateKey: Encryptor + Decryptor {}

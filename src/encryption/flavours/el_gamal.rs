@@ -17,7 +17,12 @@ pub struct ElGamalPublicKey<T, R> {
 
 pub struct ElGamalSecret<T>(isize, PhantomData<T>);
 
-impl<F, T, R> PublicKeyEncryption<T, (T, T)> for ElGamal<F, R>
+impl<F: Fn(&mut R) -> T, T, R> Enc for ElGamal<F, R> {
+    type Message = T;
+    type Cipher = (T, T);
+}
+
+impl<F, T, R> PublicKeyEncryption for ElGamal<F, R>
 where
     F: Fn(&mut R) -> T,
     T: FinGroup,
@@ -41,14 +46,24 @@ where
     }
 }
 
-impl<T: FinGroup, R: Rng> Encryptor<T, (T, T)> for ElGamalPublicKey<T, R> {
+impl<T, R> Enc for ElGamalPublicKey<T, R> {
+    type Message = T;
+    type Cipher = (T, T);
+}
+
+impl<T: FinGroup, R: Rng> Encryptor for ElGamalPublicKey<T, R> {
     fn encrypt(&mut self, message: T) -> (T, T) {
         let y: isize = self.random.gen();
         (self.generator.clone() * y, self.key.clone() * y + message)
     }
 }
 
-impl<T: FinGroup> Decryptor<T, (T, T)> for ElGamalSecret<T> {
+impl<T> Enc for ElGamalSecret<T> {
+    type Message = T;
+    type Cipher = (T, T);
+}
+
+impl<T: FinGroup> Decryptor for ElGamalSecret<T> {
     type Error = ();
 
     fn decrypt(&self, (c1, c2): (T, T)) -> Result<T, Self::Error> {

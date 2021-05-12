@@ -1,4 +1,4 @@
-use super::{schemes::*, encapsulation::*};
+use super::{encapsulation::*, schemes::*};
 
 pub struct HybridEncryption<E>(E);
 pub struct HybridEncryptor<E>(E, usize);
@@ -10,10 +10,19 @@ impl<E> From<E> for HybridEncryption<E> {
     }
 }
 
-impl<E, K, M, C1, C2> PublicKeyEncryption<M, (C1, C2)> for HybridEncryption<E>
+impl<E, K> Enc for HybridEncryption<E>
 where
-    E: KeyEncapsulation<C1, Key = K>,
-    K: PrivateKey<M, C2>,
+    E: Caps<Key = K>,
+    K: Enc,
+{
+    type Message = K::Message;
+    type Cipher = (E::Cipher, K::Cipher);
+}
+
+impl<E, K> PublicKeyEncryption for HybridEncryption<E>
+where
+    E: KeyEncapsulation<Key = K>,
+    K: PrivateKey,
 {
     type PublicKey = HybridEncryptor<E::Encaps>;
     type Secret = HybridDecryptor<E::Decaps>;
@@ -24,27 +33,49 @@ where
     }
 }
 
-impl<E, K, M, C1, C2> Encryptor<M, (C1, C2)> for HybridEncryptor<E>
+impl<E, K> Enc for HybridEncryptor<E>
 where
-    E: Encapsulator<C1, Key = K>,
-    K: Encryptor<M, C2>,
+    E: Caps<Key = K>,
+    K: Enc,
 {
-    fn encrypt(&mut self, message: M) -> (C1, C2) {
+    type Message = K::Message;
+    type Cipher = (E::Cipher, K::Cipher);
+}
+
+impl<E, K> Encryptor for HybridEncryptor<E>
+where
+    E: Encapsulator<Key = K>,
+    K: Encryptor,
+{
+    fn encrypt(&mut self, message: Self::Message) -> Self::Cipher {
         let (mut enc, c1) = self.0.encapsulate(self.1);
         (c1, enc.encrypt(message))
     }
 }
 
-impl<D, K, M, C1, C2> Decryptor<M, (C1, C2)> for HybridDecryptor<D>
+impl<D, K> Enc for HybridDecryptor<D>
 where
-    D: Decapsulator<C1, Key = K>,
-    K: Decryptor<M, C2>,
+    D: Caps<Key = K>,
+    K: Enc,
+{
+    type Message = K::Message;
+    type Cipher = (D::Cipher, K::Cipher);
+}
+
+impl<D, K> Decryptor for HybridDecryptor<D>
+where
+    D: Decapsulator<Key = K>,
+    K: Decryptor,
 {
     type Error = HybridError<D::Error, K::Error>;
 
-    fn decrypt(&self, (c1, c2): (C1, C2)) -> Result<M, Self::Error> {
+    fn decrypt(
+        &self,
+        (c1, c2): Self::Cipher,
+    ) -> Result<Self::Message, Self::Error> {
         self.0
-            .decapsulate(c1)?
+            .decapsulate(c1)
+            .map_err(HybridError::Decapsulation)?
             .decrypt(c2)
             .map_err(HybridError::Decryption)
     }
@@ -53,10 +84,4 @@ where
 pub enum HybridError<E1, E2> {
     Decapsulation(E1),
     Decryption(E2),
-}
-
-impl<E1, E2> From<E1> for HybridError<E1, E2> {
-    fn from(err: E1) -> Self {
-        Self::Decapsulation(err)
-    }
 }

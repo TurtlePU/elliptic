@@ -1,4 +1,4 @@
-use crate::algebra::traits::FinGroup;
+use crate::{algebra::traits::FinGroup, encryption::base::encapsulation::Caps};
 use crate::encryption::base::encapsulation::{
     Decapsulator, Encapsulator, KeyEncapsulation,
 };
@@ -24,7 +24,17 @@ pub struct ElGamalDecaps<G, H> {
     _phantom: PhantomData<G>,
 }
 
-impl<Gen, F, R, G, H, K> KeyEncapsulation<G> for ElGamalKem<Gen, F, R>
+impl<Gen, F, R, G, H, K> Caps for ElGamalKem<Gen, F, R>
+where
+    Gen: Fn(&mut R) -> G,
+    F: Fn(&mut R, usize) -> H,
+    H: Clone + Fn(G) -> K,
+{
+    type Key = K;
+    type Cipher = G;
+}
+
+impl<Gen, F, R, G, H, K> KeyEncapsulation for ElGamalKem<Gen, F, R>
 where
     Gen: Fn(&mut R) -> G,
     F: Fn(&mut R, usize) -> H,
@@ -32,7 +42,6 @@ where
     G: FinGroup,
     H: Clone + Fn(G) -> K,
 {
-    type Key = K;
     type Encaps = ElGamalEncaps<G, H, R>;
     type Decaps = ElGamalDecaps<G, H>;
 
@@ -57,15 +66,18 @@ where
     }
 }
 
-impl<G, H, R, K> Encapsulator<G> for ElGamalEncaps<G, H, R>
+impl<G, H, R, K> Caps for ElGamalEncaps<G, H, R> where H: Fn(G) -> K {
+    type Key = K;
+    type Cipher = G;
+}
+
+impl<G, H, R, K> Encapsulator for ElGamalEncaps<G, H, R>
 where
     G: FinGroup,
     R: Rng,
     H: Fn(G) -> K,
 {
-    type Key = K;
-
-    fn encapsulate(&mut self, _: usize) -> (Self::Key, G) {
+    fn encapsulate(&mut self, _: usize) -> (Self::Key, Self::Cipher) {
         let y: isize = self.random.gen();
         (
             (self.convert)(self.public.clone() * y),
@@ -74,16 +86,22 @@ where
     }
 }
 
-impl<G, H, K> Decapsulator<G> for ElGamalDecaps<G, H>
+impl<G, H, K> Caps for ElGamalDecaps<G, H> where H: Fn(G) -> K {
+    type Key = K;
+    type Cipher = G;
+}
+
+impl<G, H, K> Decapsulator for ElGamalDecaps<G, H>
 where
     G: FinGroup,
     H: Fn(G) -> K,
 {
-    type Key = K;
     type Error = ();
 
-    fn decapsulate(&self, cipher: G) -> Result<Self::Key, Self::Error> {
+    fn decapsulate(
+        &self,
+        cipher: Self::Cipher,
+    ) -> Result<Self::Key, Self::Error> {
         Ok((self.convert)(cipher * self.secret))
     }
 }
-
