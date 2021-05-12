@@ -4,14 +4,13 @@ use std::{
     ops::{Add, Div, Mul, Neg, Sub},
 };
 
+use num_bigint::BigUint;
 use num_traits::{Inv, One, Pow, Zero};
 use rand::{distributions::Standard, prelude::Distribution, Fill};
 
 use crate::algebra::{algo::extended_gcd, poly::Poly, traits::*};
 
 pub trait Irreducible<T> {
-    const MOD_LEN: u32;
-
     fn modulo() -> Poly<T>;
 }
 
@@ -57,7 +56,9 @@ where
     Poly<T>: Integral,
     T: FinGroup,
 {
-    const ORDER: usize = T::ORDER.pow(I::MOD_LEN);
+    fn order() -> BigUint {
+        T::order().pow(I::modulo().degree())
+    }
 }
 
 impl<T, I> Ring for PolyField<T, I>

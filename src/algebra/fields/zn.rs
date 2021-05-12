@@ -4,6 +4,7 @@ use std::{
     ops::{Add, Div, Mul, Neg, Sub},
 };
 
+use num_bigint::BigUint;
 use num_traits::{Inv, One, Pow, Zero};
 use rand::{
     distributions::{
@@ -24,7 +25,9 @@ pub struct Zn<const N: usize>(usize);
 impl<const N: usize> Group for Zn<N> {}
 
 impl<const N: usize> FinGroup for Zn<N> {
-    const ORDER: usize = N;
+    fn order() -> BigUint {
+        BigUint::from(N)
+    }
 }
 
 impl<const N: usize> Ring for Zn<N> {}

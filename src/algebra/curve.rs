@@ -5,6 +5,7 @@ use std::{
     ops::{Add, Mul, Neg, Sub},
 };
 
+use num_bigint::BigUint;
 use num_traits::Zero;
 use rand::{distributions::Standard, prelude::Distribution};
 
@@ -14,8 +15,7 @@ use super::{
 };
 
 pub trait Curve<F> {
-    const ORDER: usize;
-
+    fn order() -> BigUint;
     fn a() -> F;
     fn b() -> F;
 }
@@ -111,7 +111,9 @@ impl<F: Field, C> From<EllipticPoint<F, C>> for (F, F) {
 impl<F: Field, C: Curve<F>> Group for EllipticPoint<F, C> {}
 
 impl<F: Field, C: Curve<F>> FinGroup for EllipticPoint<F, C> {
-    const ORDER: usize = C::ORDER;
+    fn order() -> BigUint {
+        C::order()
+    }
 }
 
 impl<F: Clone, C> Clone for EllipticPoint<F, C> {
