@@ -9,6 +9,7 @@ pub mod encapsulation;
 pub mod hybrid;
 pub mod schemes;
 pub mod streaming;
+pub mod string_encryption;
 
 pub fn hybrid_streaming<K>(
     scheme: impl KeyEncapsulation<Key = K>,
