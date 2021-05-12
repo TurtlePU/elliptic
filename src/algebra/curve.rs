@@ -108,6 +108,16 @@ impl<F: Field, C> From<EllipticPoint<F, C>> for (F, F) {
     }
 }
 
+impl<F: Field, C: Curve<F>> From<EllipticPoint<F, C>> for Option<(F, F)> {
+    fn from(point: EllipticPoint<F, C>) -> Self {
+        if point.is_zero() {
+            None
+        } else {
+            Some(point.into())
+        }
+    }
+}
+
 impl<F: Field, C: Curve<F>> Group for EllipticPoint<F, C> {}
 
 impl<F: Field, C: Curve<F>> FinGroup for EllipticPoint<F, C> {
