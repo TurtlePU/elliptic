@@ -23,7 +23,7 @@ pub trait FinGroup: Group {
 }
 
 pub trait Ring:
-    Group + One + Mul<Output = Self> + Pow<u32, Output = Self>
+    Group + One + Mul<Output = Self> + Pow<usize, Output = Self>
 {
 }
 

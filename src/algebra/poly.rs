@@ -206,11 +206,11 @@ impl<T: Field> Mul for Poly<T> {
     }
 }
 
-impl<T: Field> Pow<u32> for Poly<T> {
+impl<T: Field> Pow<usize> for Poly<T> {
     type Output = Self;
 
-    fn pow(self, rhs: u32) -> Self::Output {
-        repeat_monoid(Self::mul, rhs as usize, self, Self::one())
+    fn pow(self, rhs: usize) -> Self::Output {
+        repeat_monoid(Self::mul, rhs, self, Self::one())
     }
 }
 

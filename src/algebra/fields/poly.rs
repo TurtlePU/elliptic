@@ -160,14 +160,14 @@ where
     }
 }
 
-impl<T, I> Pow<u32> for PolyField<T, I>
+impl<T, I> Pow<usize> for PolyField<T, I>
 where
     I: Irreducible<T>,
     Poly<T>: Integral,
 {
     type Output = Self;
 
-    fn pow(self, rhs: u32) -> Self::Output {
+    fn pow(self, rhs: usize) -> Self::Output {
         I::into_field(self.0.pow(rhs))
     }
 }

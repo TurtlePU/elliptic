@@ -16,8 +16,8 @@ use rand::{
 };
 
 use crate::algebra::{
-    algo::extended_gcd,
-    traits::{Field, FinGroup, Group, Ring},
+    algo::{extended_gcd, is_prime, repeat_monoid},
+    traits::{Field, FinGroup, Group, Ring, Sqrt},
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -50,6 +50,19 @@ impl<const N: usize> From<Zn<N>> for usize {
 impl<const N: usize> Distribution<Zn<N>> for Standard {
     fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> Zn<N> {
         Zn::from(rng.gen::<usize>())
+    }
+}
+
+impl<const N: usize> Sqrt for Zn<N> {
+    fn sqrt(self) -> Option<Self> {
+        assert!(is_prime(Self::order()));
+        assert!((N + 1) % 4 == 0);
+        let sqrt = self.clone().pow((N + 1) / 4);
+        if sqrt.clone().pow(2) == self {
+            Some(sqrt)
+        } else {
+            None
+        }
     }
 }
 
@@ -103,11 +116,11 @@ impl<const N: usize> Mul for Zn<N> {
     }
 }
 
-impl<const N: usize> Pow<u32> for Zn<N> {
+impl<const N: usize> Pow<usize> for Zn<N> {
     type Output = Self;
 
-    fn pow(self, rhs: u32) -> Self::Output {
-        Self::from(self.0.pow(rhs))
+    fn pow(self, rhs: usize) -> Self::Output {
+        Self::from(repeat_monoid(usize::mul, rhs, self.0, 1))
     }
 }
 
