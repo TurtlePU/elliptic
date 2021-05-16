@@ -1,6 +1,6 @@
 use rand::Rng;
 
-use super::{encapsulation::*, schemes::*};
+use super::{encapsulation::*, encryption::*};
 
 pub struct StreamScheme<S>(S);
 pub struct StreamMapper<T>(T);

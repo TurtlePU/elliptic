@@ -1,7 +1,4 @@
-use crate::encryption::base::encapsulation::{
-    Decapsulator, Encapsulator, KeyEncapsulation,
-};
-use crate::{algebra::traits::FinGroup, encryption::base::encapsulation::Caps};
+use crate::{algebra::traits::FinGroup, encryption::base::encapsulation::*};
 use rand::{Rng, RngCore};
 use std::marker::PhantomData;
 

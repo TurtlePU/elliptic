@@ -3,10 +3,7 @@ use std::string::FromUtf8Error;
 use hex::FromHexError;
 use rand::Rng;
 
-use super::schemes::{
-    Decryptor, Enc, Encryptor, PrivateKey, PrivateKeyEncryption,
-    PublicKeyEncryption,
-};
+use super::encryption::*;
 
 pub struct Stringer<X>(pub X);
 

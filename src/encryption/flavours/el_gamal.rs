@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use rand::{Rng, RngCore};
 
-use crate::{algebra::traits::FinGroup, encryption::base::schemes::*};
+use crate::{algebra::traits::FinGroup, encryption::base::encryption::*};
 
 pub struct ElGamal<F> {
     pub get_group_generator: F,
