@@ -15,7 +15,7 @@ use super::{
 };
 
 pub trait Curve<F: Field>: Sized {
-    fn order() -> BigUint;
+    fn group_order() -> BigUint;
     fn a() -> F;
     fn b() -> F;
 
@@ -79,6 +79,12 @@ impl<F: Clone, C> EllipticPoint<F, C> {
     }
 }
 
+impl<F: Field, C> EllipticPoint<F, C> {
+    fn is_infinite(&self) -> bool {
+        self.coords.2.is_zero()
+    }
+}
+
 impl<F: Field, C> From<EllipticPoint<F, C>> for (F, F) {
     fn from(point: EllipticPoint<F, C>) -> Self {
         let (x, y, z) = point.coords;
@@ -87,9 +93,9 @@ impl<F: Field, C> From<EllipticPoint<F, C>> for (F, F) {
     }
 }
 
-impl<F: Field, C: Curve<F>> From<EllipticPoint<F, C>> for Option<(F, F)> {
+impl<F: Field, C> From<EllipticPoint<F, C>> for Option<(F, F)> {
     fn from(point: EllipticPoint<F, C>) -> Self {
-        if point.is_zero() {
+        if point.is_infinite() {
             None
         } else {
             Some(point.into())
@@ -101,7 +107,7 @@ impl<F: Field, C: Curve<F>> Group for EllipticPoint<F, C> {}
 
 impl<F: Field, C: Curve<F>> FinGroup for EllipticPoint<F, C> {
     fn order() -> BigUint {
-        C::order()
+        C::group_order()
     }
 }
 
@@ -206,7 +212,7 @@ impl<F: Field, C: Curve<F>> Zero for EllipticPoint<F, C> {
     }
 
     fn is_zero(&self) -> bool {
-        self.coords.2.is_zero()
+        self.is_infinite()
     }
 }
 
