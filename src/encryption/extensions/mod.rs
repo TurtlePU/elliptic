@@ -32,16 +32,20 @@ pub type PublicEncObject = Box<
     >,
 >;
 
-pub fn public_encryption<E>(encryption: E) -> PublicEncObject
+pub fn public_encryption<E>(
+    encryption: E,
+) -> impl PublicKeyEncryption<Message = String, Cipher = String>
 where
     E: PublicKeyEncryption + 'static,
     E::Message: Encoding + Decoding,
     E::Cipher: Serialize + Deserialize,
 {
-    Box::new(DynEncryption(Stringer(Vectorized(encryption))))
+    Stringer(Vectorized(encryption))
 }
 
-pub fn hybrid_encryption<E, K>(encapsulation: E) -> PublicEncObject
+pub fn hybrid_encryption<E, K>(
+    encapsulation: E,
+) -> impl PublicKeyEncryption<Message = String, Cipher = String>
 where
     E: KeyEncapsulation<Key = K> + 'static,
     E::Cipher: Serialize + Deserialize,
@@ -49,5 +53,12 @@ where
     K::Cipher: Serialize + Deserialize,
     K::Message: Encoding + Decoding,
 {
-    Box::new(DynEncryption(Stringer(Hybrid(Vectorized(encapsulation)))))
+    Stringer(Hybrid(Vectorized(encapsulation)))
+}
+
+pub fn make_dyn(
+    encryption: impl PublicKeyEncryption<Message = String, Cipher = String>
+        + 'static,
+) -> PublicEncObject {
+    Box::new(DynEncryption(encryption))
 }
