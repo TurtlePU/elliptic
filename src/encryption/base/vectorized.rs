@@ -67,8 +67,6 @@ impl<S: PrivateKeyEncryption> PrivateKeyEncryption for StreamScheme<S> {
     }
 }
 
-impl<K: PrivateKey> PrivateKey for StreamMapper<K> {}
-
 impl<E: Caps> Caps for StreamScheme<E> {
     type Key = StreamMapper<E::Key>;
     type Cipher = E::Cipher;

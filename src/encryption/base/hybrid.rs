@@ -2,54 +2,37 @@ use rand::Rng;
 
 use super::{encapsulation::*, schemes::*};
 
-pub struct HybridEncryption<E>(E);
-pub struct HybridEncryptor<E>(E);
-pub struct HybridDecryptor<D>(D);
+pub struct Hybrid<X>(pub X);
 
-impl<E> From<E> for HybridEncryption<E> {
-    fn from(scheme: E) -> Self {
-        Self(scheme)
-    }
-}
-
-impl<E, K> Enc for HybridEncryption<E>
+impl<X, K> Enc for Hybrid<X>
 where
-    E: Caps<Key = K>,
+    X: Caps<Key = K>,
     K: Enc,
 {
     type Message = K::Message;
-    type Cipher = (E::Cipher, K::Cipher);
+    type Cipher = (X::Cipher, K::Cipher);
 }
 
-impl<E, K> PublicKeyEncryption for HybridEncryption<E>
+impl<X, K> PublicKeyEncryption for Hybrid<X>
 where
-    E: KeyEncapsulation<Key = K>,
+    X: KeyEncapsulation<Key = K>,
     K: PrivateKey,
 {
-    type PublicKey = HybridEncryptor<E::Encaps>;
-    type Secret = HybridDecryptor<E::Decaps>;
+    type PublicKey = Hybrid<X::Encaps>;
+    type Secret = Hybrid<X::Decaps>;
 
     fn generate_keys(
         &self,
         rng: &mut impl Rng,
     ) -> (Self::PublicKey, Self::Secret) {
         let (enc, dec) = self.0.generate_caps(rng);
-        (HybridEncryptor(enc), HybridDecryptor(dec))
+        (Hybrid(enc), Hybrid(dec))
     }
 }
 
-impl<E, K> Enc for HybridEncryptor<E>
+impl<X, K> Encryptor for Hybrid<X>
 where
-    E: Caps<Key = K>,
-    K: Enc,
-{
-    type Message = K::Message;
-    type Cipher = (E::Cipher, K::Cipher);
-}
-
-impl<E, K> Encryptor for HybridEncryptor<E>
-where
-    E: Encapsulator<Key = K>,
+    X: Encapsulator<Key = K>,
     K: Encryptor,
 {
     fn encrypt(
@@ -62,21 +45,12 @@ where
     }
 }
 
-impl<D, K> Enc for HybridDecryptor<D>
+impl<X, K> Decryptor for Hybrid<X>
 where
-    D: Caps<Key = K>,
-    K: Enc,
-{
-    type Message = K::Message;
-    type Cipher = (D::Cipher, K::Cipher);
-}
-
-impl<D, K> Decryptor for HybridDecryptor<D>
-where
-    D: Decapsulator<Key = K>,
+    X: Decapsulator<Key = K>,
     K: Decryptor,
 {
-    type Error = HybridError<D::Error, K::Error>;
+    type Error = HybridError<X::Error, K::Error>;
 
     fn decrypt(
         &self,

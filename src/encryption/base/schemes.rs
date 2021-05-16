@@ -39,3 +39,5 @@ pub trait PrivateKeyEncryption {
 }
 
 pub trait PrivateKey: Encryptor + Decryptor {}
+
+impl<X> PrivateKey for X where X: Encryptor + Decryptor {}
