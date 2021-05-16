@@ -7,11 +7,11 @@ use std::{
 
 use num_bigint::BigUint;
 use num_traits::Zero;
-use rand::{distributions::Standard, prelude::Distribution};
+use rand::{distributions::Standard, prelude::Distribution, Rng};
 
 use super::{
     algo::repeat_monoid,
-    traits::{Field, FinGroup, Group},
+    traits::{Field, FinGroup, Group, Sqrt},
 };
 
 pub trait Curve<F: Field>: Sized {
@@ -21,7 +21,7 @@ pub trait Curve<F: Field>: Sized {
 
     fn affine(x: F, y: F) -> Result<EllipticPoint<F, Self>, NotOnCurve> {
         if check_solution::<F, Self>(x.clone(), y.clone()) {
-            Ok(EllipticPoint::new(x, y, F::one()))
+            Ok(EllipticPoint::affine(x, y))
         } else {
             Err(NotOnCurve)
         }
@@ -49,17 +49,22 @@ impl<F, C> EllipticPoint<F, C> {
     }
 }
 
-impl<F: Field, C: Curve<F>> Distribution<EllipticPoint<F, C>> for Standard
+impl<F: Field, C> EllipticPoint<F, C> {
+    fn affine(x: F, y: F) -> Self {
+        Self::new(x, y, F::one())
+    }
+}
+
+impl<F: Field + Sqrt, C: Curve<F>> Distribution<EllipticPoint<F, C>>
+    for Standard
 where
     Standard: Distribution<F>,
 {
-    fn sample<R: rand::Rng + ?Sized>(
-        &self,
-        rng: &mut R,
-    ) -> EllipticPoint<F, C> {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> EllipticPoint<F, C> {
         loop {
-            if let Ok(point) = C::affine(rng.gen(), rng.gen()) {
-                break point;
+            let x = rng.gen();
+            if let Some(y) = solve::<F, C>(x.clone()) {
+                break EllipticPoint::affine(x, y);
             }
         }
     }
@@ -228,5 +233,13 @@ pub fn check_curve<F: Debug + Field, C: Curve<F>>() {
 }
 
 fn check_solution<F: Field, C: Curve<F>>(x: F, y: F) -> bool {
-    y.pow(2) == x.clone().pow(3) + C::a() * x + C::b()
+    y.pow(2) == right_side::<F, C>(x)
+}
+
+fn solve<F: Field + Sqrt, C: Curve<F>>(x: F) -> Option<F> {
+    right_side::<F, C>(x).sqrt()
+}
+
+fn right_side<F: Field, C: Curve<F>>(x: F) -> F {
+    x.clone().pow(3) + C::a() * x + C::b()
 }

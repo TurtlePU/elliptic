@@ -31,6 +31,10 @@ pub trait Integral: Ring + Div<Output = Self> + Rem<Output = Self> {}
 
 pub trait Field: Ring + Inv<Output = Self> + Div<Output = Self> {}
 
+pub trait Sqrt: Sized {
+    fn sqrt(self) -> Option<Self>;
+}
+
 impl<T> Value for T where T: Clone + Eq {}
 
 impl<T> BasicGroup for T where

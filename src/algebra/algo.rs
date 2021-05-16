@@ -1,3 +1,6 @@
+use num_bigint::BigUint;
+use num_traits::{FromPrimitive, One, Zero};
+
 use super::traits::Integral;
 
 /// Returns (g, x, y) such that a * x + b * y = g = gcd(a, b).
@@ -35,8 +38,27 @@ where
     }
 }
 
+pub fn is_prime(value: BigUint) -> bool {
+    if value.is_one() {
+        return false;
+    }
+    let mut x = BigUint::from_i8(2).unwrap();
+    loop {
+        if &x * &x > value {
+            break true;
+        }
+        if (&value % &x).is_zero() {
+            return false;
+        }
+        x += BigUint::one();
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use num_bigint::BigUint;
+    use num_traits::FromPrimitive;
+
     use super::replace;
     use std::ops::Add;
 
@@ -63,5 +85,21 @@ mod tests {
                 assert_eq!(g, gcd(a, b));
             }
         }
+    }
+
+    fn is_prime(value: usize) -> bool {
+        super::is_prime(BigUint::from_usize(value).unwrap())
+    }
+
+    #[test]
+    fn is_prime_test() {
+        assert!(!is_prime(1));
+        assert!(is_prime(2));
+        assert!(is_prime(3));
+        assert!(!is_prime(4));
+        assert!(is_prime(5));
+        assert!(is_prime(79));
+        assert!(is_prime(113));
+        assert!(!is_prime(79 * 113));
     }
 }

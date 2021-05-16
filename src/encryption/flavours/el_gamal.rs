@@ -8,6 +8,14 @@ pub struct ElGamal<F> {
     pub get_group_generator: F,
 }
 
+impl<F> From<F> for ElGamal<F> {
+    fn from(get_group_generator: F) -> Self {
+        Self {
+            get_group_generator,
+        }
+    }
+}
+
 pub struct ElGamalPublicKey<T> {
     pub group_generator: T,
     pub key: T,
