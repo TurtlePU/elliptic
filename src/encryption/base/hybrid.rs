@@ -1,7 +1,9 @@
+use rand::Rng;
+
 use super::{encapsulation::*, schemes::*};
 
 pub struct HybridEncryption<E>(E);
-pub struct HybridEncryptor<E>(E, usize);
+pub struct HybridEncryptor<E>(E);
 pub struct HybridDecryptor<D>(D);
 
 impl<E> From<E> for HybridEncryption<E> {
@@ -27,9 +29,12 @@ where
     type PublicKey = HybridEncryptor<E::Encaps>;
     type Secret = HybridDecryptor<E::Decaps>;
 
-    fn generate_keys(&mut self, n: usize) -> (Self::PublicKey, Self::Secret) {
-        let (enc, dec) = self.0.generate_caps(n);
-        (HybridEncryptor(enc, n), HybridDecryptor(dec))
+    fn generate_keys(
+        &self,
+        rng: &mut impl Rng,
+    ) -> (Self::PublicKey, Self::Secret) {
+        let (enc, dec) = self.0.generate_caps(rng);
+        (HybridEncryptor(enc), HybridDecryptor(dec))
     }
 }
 
@@ -47,9 +52,13 @@ where
     E: Encapsulator<Key = K>,
     K: Encryptor,
 {
-    fn encrypt(&mut self, message: Self::Message) -> Self::Cipher {
-        let (mut enc, c1) = self.0.encapsulate(self.1);
-        (c1, enc.encrypt(message))
+    fn encrypt(
+        &self,
+        rng: &mut impl Rng,
+        message: Self::Message,
+    ) -> Self::Cipher {
+        let (enc, c1) = self.0.encapsulate(rng);
+        (c1, enc.encrypt(rng, message))
     }
 }
 

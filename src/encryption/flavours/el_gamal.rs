@@ -1,60 +1,71 @@
 use std::marker::PhantomData;
 
-use rand::Rng;
+use rand::{Rng, RngCore};
 
 use crate::{algebra::traits::FinGroup, encryption::base::schemes::*};
 
-pub struct ElGamal<F, R> {
-    get_generator: F,
-    random: R,
+pub struct ElGamal<F> {
+    pub get_group_generator: F,
 }
 
-pub struct ElGamalPublicKey<T, R> {
-    generator: T,
-    random: R,
-    key: T,
+pub struct ElGamalPublicKey<T> {
+    pub group_generator: T,
+    pub key: T,
 }
 
-pub struct ElGamalSecret<T>(isize, PhantomData<T>);
+pub struct ElGamalSecret<T> {
+    pub secret: isize,
+    pub group: PhantomData<T>,
+}
 
-impl<F: Fn(&mut R) -> T, T, R> Enc for ElGamal<F, R> {
+impl<F, T> Enc for ElGamal<F>
+where
+    F: Fn(&mut dyn RngCore) -> T,
+{
     type Message = T;
     type Cipher = (T, T);
 }
 
-impl<F, T, R> PublicKeyEncryption for ElGamal<F, R>
+impl<F, T> PublicKeyEncryption for ElGamal<F>
 where
-    F: Fn(&mut R) -> T,
+    F: Fn(&mut dyn RngCore) -> T,
     T: FinGroup,
-    R: Rng + Clone,
 {
-    type PublicKey = ElGamalPublicKey<T, R>;
+    type PublicKey = ElGamalPublicKey<T>;
     type Secret = ElGamalSecret<T>;
 
-    fn generate_keys(&mut self, _: usize) -> (Self::PublicKey, Self::Secret) {
-        let generator = (self.get_generator)(&mut self.random);
-        let x: isize = self.random.gen();
-        let k = generator.clone() * x;
+    fn generate_keys(
+        &self,
+        rng: &mut impl Rng,
+    ) -> (Self::PublicKey, Self::Secret) {
+        let group_generator = (self.get_group_generator)(rng);
+        let secret: isize = rng.gen();
+        let key = group_generator.clone() * secret;
         (
             ElGamalPublicKey {
-                generator,
-                random: self.random.clone(),
-                key: k,
+                group_generator,
+                key,
             },
-            ElGamalSecret(x, PhantomData),
+            ElGamalSecret {
+                secret,
+                group: PhantomData,
+            },
         )
     }
 }
 
-impl<T, R> Enc for ElGamalPublicKey<T, R> {
+impl<T> Enc for ElGamalPublicKey<T> {
     type Message = T;
     type Cipher = (T, T);
 }
 
-impl<T: FinGroup, R: Rng> Encryptor for ElGamalPublicKey<T, R> {
-    fn encrypt(&mut self, message: T) -> (T, T) {
-        let y: isize = self.random.gen();
-        (self.generator.clone() * y, self.key.clone() * y + message)
+impl<T: FinGroup> Encryptor for ElGamalPublicKey<T> {
+    fn encrypt(&self, rng: &mut impl Rng, message: T) -> (T, T) {
+        let y: isize = rng.gen();
+        (
+            self.group_generator.clone() * y,
+            self.key.clone() * y + message,
+        )
     }
 }
 
@@ -66,7 +77,7 @@ impl<T> Enc for ElGamalSecret<T> {
 impl<T: FinGroup> Decryptor for ElGamalSecret<T> {
     type Error = ();
 
-    fn decrypt(&self, (c1, c2): (T, T)) -> Result<T, Self::Error> {
-        Ok(c2 - c1 * self.0)
+    fn decrypt(&self, (salt, cipher): (T, T)) -> Result<T, Self::Error> {
+        Ok(cipher - salt * self.secret)
     }
 }

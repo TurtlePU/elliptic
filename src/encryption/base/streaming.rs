@@ -1,3 +1,5 @@
+use rand::Rng;
+
 use super::{encapsulation::*, schemes::*};
 
 pub struct StreamScheme<S>(S);
@@ -19,8 +21,11 @@ impl<S: PublicKeyEncryption> PublicKeyEncryption for StreamScheme<S> {
     type PublicKey = StreamMapper<S::PublicKey>;
     type Secret = StreamMapper<S::Secret>;
 
-    fn generate_keys(&mut self, n: usize) -> (Self::PublicKey, Self::Secret) {
-        let (enc, dec) = self.0.generate_keys(n);
+    fn generate_keys(
+        &self,
+        rng: &mut impl Rng,
+    ) -> (Self::PublicKey, Self::Secret) {
+        let (enc, dec) = self.0.generate_keys(rng);
         (StreamMapper(enc), StreamMapper(dec))
     }
 }
@@ -31,8 +36,15 @@ impl<E: Enc> Enc for StreamMapper<E> {
 }
 
 impl<E: Encryptor> Encryptor for StreamMapper<E> {
-    fn encrypt(&mut self, message: Self::Message) -> Self::Cipher {
-        message.into_iter().map(|x| self.0.encrypt(x)).collect()
+    fn encrypt(
+        &self,
+        rng: &mut impl Rng,
+        message: Self::Message,
+    ) -> Self::Cipher {
+        message
+            .into_iter()
+            .map(|x| self.0.encrypt(rng, x))
+            .collect()
     }
 }
 
@@ -50,8 +62,8 @@ impl<D: Decryptor> Decryptor for StreamMapper<D> {
 impl<S: PrivateKeyEncryption> PrivateKeyEncryption for StreamScheme<S> {
     type Secret = StreamMapper<S::Secret>;
 
-    fn generate_key(&mut self, n: usize) -> Self::Secret {
-        StreamMapper(self.0.generate_key(n))
+    fn generate_key(&self, rng: &mut impl Rng) -> Self::Secret {
+        StreamMapper(self.0.generate_key(rng))
     }
 }
 
@@ -66,8 +78,11 @@ impl<E: KeyEncapsulation> KeyEncapsulation for StreamScheme<E> {
     type Encaps = StreamCapsule<E::Encaps>;
     type Decaps = StreamCapsule<E::Decaps>;
 
-    fn generate_caps(&mut self, n: usize) -> (Self::Encaps, Self::Decaps) {
-        let (enc, dec) = self.0.generate_caps(n);
+    fn generate_caps(
+        &self,
+        rng: &mut impl Rng,
+    ) -> (Self::Encaps, Self::Decaps) {
+        let (enc, dec) = self.0.generate_caps(rng);
         (StreamCapsule(enc), StreamCapsule(dec))
     }
 }
@@ -78,8 +93,8 @@ impl<E: Caps> Caps for StreamCapsule<E> {
 }
 
 impl<E: Encapsulator> Encapsulator for StreamCapsule<E> {
-    fn encapsulate(&mut self, n: usize) -> (Self::Key, Self::Cipher) {
-        let (key, c) = self.0.encapsulate(n);
+    fn encapsulate(&self, rng: &mut impl Rng) -> (Self::Key, Self::Cipher) {
+        let (key, c) = self.0.encapsulate(rng);
         (StreamMapper(key), c)
     }
 }

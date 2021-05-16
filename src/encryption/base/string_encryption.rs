@@ -1,6 +1,7 @@
 use std::string::FromUtf8Error;
 
 use hex::FromHexError;
+use rand::Rng;
 
 use crate::bytes::{FromBytes, FromBytesInfallible, ToBytes};
 
@@ -31,8 +32,11 @@ where
     type PublicKey = StringEncryption<S::PublicKey>;
     type Secret = StringEncryption<S::Secret>;
 
-    fn generate_keys(&mut self, n: usize) -> (Self::PublicKey, Self::Secret) {
-        let (enc, dec) = self.0.generate_keys(n);
+    fn generate_keys(
+        &self,
+        rng: &mut impl Rng,
+    ) -> (Self::PublicKey, Self::Secret) {
+        let (enc, dec) = self.0.generate_keys(rng);
         (StringEncryption(enc), StringEncryption(dec))
     }
 }
@@ -46,8 +50,8 @@ where
 {
     type Secret = StringEncryption<K>;
 
-    fn generate_key(&mut self, n: usize) -> Self::Secret {
-        StringEncryption(self.0.generate_key(n))
+    fn generate_key(&self, rng: &mut impl Rng) -> Self::Secret {
+        StringEncryption(self.0.generate_key(rng))
     }
 }
 
@@ -57,9 +61,13 @@ where
     E::Message: FromBytesInfallible,
     E::Cipher: ToBytes,
 {
-    fn encrypt(&mut self, message: Self::Message) -> Self::Cipher {
+    fn encrypt(
+        &self,
+        rng: &mut impl Rng,
+        message: Self::Message,
+    ) -> Self::Cipher {
         let message = E::Message::from_bytes(message.as_bytes());
-        hex::encode(self.0.encrypt(message).to_bytes())
+        hex::encode(self.0.encrypt(rng, message).to_bytes())
     }
 }
 
