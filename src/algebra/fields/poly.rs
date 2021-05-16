@@ -70,6 +70,16 @@ where
 {
 }
 
+impl<T, I> From<Poly<T>> for PolyField<T, I>
+where
+    I: Irreducible<T>,
+    Poly<T>: Integral,
+{
+    fn from(poly: Poly<T>) -> Self {
+        I::into_field(poly)
+    }
+}
+
 impl<T, I> Clone for PolyField<T, I>
 where
     Poly<T>: Clone,
@@ -220,4 +230,20 @@ where
     fn div(self, rhs: Self) -> Self::Output {
         self * rhs.inv()
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{algebra::{fields::Zn, poly::Poly}, poly};
+    use super::{Irreducible, PolyField};
+
+    pub struct XcubePlus2;
+
+    impl Irreducible<Zn<5>> for XcubePlus2 {
+        fn modulo() -> Poly<Zn<5>> {
+            poly![2, 0, 0, 1]
+        }
+    }
+
+    type F = PolyField<Zn<5>, XcubePlus2>;
 }
