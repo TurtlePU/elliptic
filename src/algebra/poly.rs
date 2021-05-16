@@ -20,7 +20,7 @@ pub struct Poly<T>(Vec<T>);
 
 impl<T> Group for Poly<T> where T: Group {}
 
-impl<T> Ring for Poly<T> where T: Field {}
+impl<T> Ring for Poly<T> where T: Ring {}
 
 #[macro_export]
 macro_rules! poly {
@@ -61,7 +61,7 @@ impl<T> Poly<T> {
         Poly(reversed_trimmed)
     }
 
-    fn div_rem(mut self, rhs: Self) -> (Self, Self)
+    fn rem_div(mut self, rhs: Self) -> (Self, Self)
     where
         T: Field,
     {
@@ -182,7 +182,7 @@ impl<T: Group> Sum for Poly<T> {
     }
 }
 
-impl<T: Field> Mul for Poly<T> {
+impl<T: Ring> Mul for Poly<T> {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
@@ -206,7 +206,7 @@ impl<T: Field> Mul for Poly<T> {
     }
 }
 
-impl<T: Field> Pow<usize> for Poly<T> {
+impl<T: Ring> Pow<usize> for Poly<T> {
     type Output = Self;
 
     fn pow(self, rhs: usize) -> Self::Output {
@@ -218,7 +218,7 @@ impl<T: Field> Div for Poly<T> {
     type Output = Self;
 
     fn div(self, rhs: Self) -> Self::Output {
-        self.div_rem(rhs).1
+        self.rem_div(rhs).1
     }
 }
 
@@ -226,7 +226,7 @@ impl<T: Field> Rem for Poly<T> {
     type Output = Self;
 
     fn rem(self, rhs: Self) -> Self::Output {
-        self.div_rem(rhs).0
+        self.rem_div(rhs).0
     }
 }
 
@@ -240,7 +240,7 @@ impl<T: Group> Zero for Poly<T> {
     }
 }
 
-impl<T: Field> One for Poly<T> {
+impl<T: Ring> One for Poly<T> {
     fn one() -> Self {
         Self(vec![T::one()])
     }
@@ -271,5 +271,56 @@ impl<T: Field> Mul<Poly<T>> for Monome<T> {
         let head = repeat_with(T::zero).take(self.degree);
         let tail = rhs.0.into_iter().map(|x| self.coeff.clone() * x);
         Poly(head.chain(tail).collect())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use num_traits::Zero;
+
+    use crate::algebra::fields::Zn;
+
+    use super::Poly;
+
+    #[test]
+    fn add() {
+        let a = Poly(vec![1, -1,  15,  8]);
+        let b = Poly(vec![1,  1, -14, -8]);
+        let c = Poly(vec![2,  0,   1]);
+        assert!(a.clone() + b.clone() == c);
+        assert!(b.clone() + a.clone() == c);
+        assert!(b == c.clone() - a.clone());
+        assert!(a == c.clone() - b.clone());
+        assert!((a.clone() + b.clone() - c.clone()).is_zero());
+        assert!((a.clone() + (b.clone() - c.clone())).is_zero());
+
+        let a = Poly(vec![ 15,  124, -443]);
+        let b = Poly(vec![-15, -124,  443]);
+        assert!((a + b).is_zero());
+    }
+
+    #[test]
+    fn mul() {
+        let a = Poly(vec![1, 3, 15, 1]);
+        let b = Poly(vec![8, 6]);
+        let c = Poly(vec![8, 30, 138, 98, 6]);
+        assert!(a.clone() * b.clone() == c);
+        assert!(b.clone() * a.clone() == c);
+
+        let a = Poly(vec![-1, 1]);
+        let b = Poly(vec![1, 1]);
+        let c = Poly(vec![-1, 0, 1]);
+        assert!(a * b == c);
+    }
+
+    #[test]
+    fn div_rem() {
+        let a: Poly<Zn<3>> = poly![0, 0, 1];
+        let b = poly![1, 1];
+        let rem = poly![1];
+        let div = poly![2, 1];
+        assert_eq!((rem.clone(), div.clone()), a.clone().rem_div(b.clone()));
+        assert!(a.clone() / b.clone() == div);
+        assert!(a.clone() % b.clone() == rem);
     }
 }

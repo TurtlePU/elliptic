@@ -197,3 +197,36 @@ impl<const N: usize> UniformSampler for UniformZn<N> {
 impl<const N: usize> SampleUniform for Zn<N> {
     type Sampler = UniformZn<N>;
 }
+
+#[cfg(test)]
+mod tests {
+    use num_traits::{Inv, Pow, Zero};
+
+    use crate::algebra::{fields::Zn, traits::Sqrt};
+
+    #[test]
+    fn add() {
+        assert!((Zn::<74>::from(69) + Zn::from(5)).is_zero());
+        assert!(Zn::<180>::from(174) + Zn::from(389) == Zn::from(23));
+        assert!(-Zn::<47>::from(111) == Zn::from(30));
+    }
+
+    #[test]
+    fn mul() {
+        assert!(Zn::<14>::from(19) * Zn::from(5) == Zn::from(11));
+        assert!((Zn::<9>::from(81) * Zn::from(12326234)).is_zero());
+    }
+
+    #[test]
+    fn inv() {
+        assert!(Zn::<18>::from(5).inv() == Zn::from(11));
+        assert!(Zn::<17>::from(8).inv() == Zn::from(15));
+    }
+
+    #[test]
+    fn sqrt() {
+        let a = Zn::<19>::from(11);
+        let sqrt = a.clone().sqrt().unwrap();
+        assert!(sqrt.pow(2) == a);
+    }
+}
