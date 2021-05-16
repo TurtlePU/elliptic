@@ -1,6 +1,9 @@
-use rand::Rng;
+use std::error::Error;
 
-use super::{encapsulation::*, encryption::*};
+use rand::RngCore;
+use thiserror::Error;
+
+use crate::encryption::base::{encapsulation::*, encryption::*};
 
 pub struct Hybrid<X>(pub X);
 
@@ -23,7 +26,7 @@ where
 
     fn generate_keys(
         &self,
-        rng: &mut impl Rng,
+        rng: &mut dyn RngCore,
     ) -> (Self::PublicKey, Self::Secret) {
         let (enc, dec) = self.0.generate_caps(rng);
         (Hybrid(enc), Hybrid(dec))
@@ -37,7 +40,7 @@ where
 {
     fn encrypt(
         &self,
-        rng: &mut impl Rng,
+        rng: &mut dyn RngCore,
         message: Self::Message,
     ) -> Self::Cipher {
         let (enc, c1) = self.0.encapsulate(rng);
@@ -64,7 +67,10 @@ where
     }
 }
 
-pub enum HybridError<E1, E2> {
-    Decapsulation(E1),
-    Decryption(E2),
+#[derive(Debug, Error)]
+pub enum HybridError<C: Error + 'static, R: Error + 'static> {
+    #[error("Decapsulation error")]
+    Decapsulation(#[source] C),
+    #[error("Decryption error")]
+    Decryption(#[source] R),
 }

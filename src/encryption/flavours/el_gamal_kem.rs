@@ -1,6 +1,6 @@
 use crate::{algebra::traits::FinGroup, encryption::base::encapsulation::*};
 use rand::{Rng, RngCore};
-use std::marker::PhantomData;
+use std::{convert::Infallible, marker::PhantomData};
 
 pub struct ElGamalKem<G, F> {
     pub group_generator_gen: G,
@@ -23,6 +23,7 @@ impl<G0, F0, G, F, K> Caps for ElGamalKem<G0, F0>
 where
     G0: Fn(&mut dyn RngCore) -> G,
     F0: Fn(&mut dyn RngCore) -> F,
+    G: 'static,
     F: Fn(G) -> K,
 {
     type Key = K;
@@ -33,15 +34,15 @@ impl<G0, F0, G, F, K> KeyEncapsulation for ElGamalKem<G0, F0>
 where
     G0: Fn(&mut dyn RngCore) -> G,
     F0: Fn(&mut dyn RngCore) -> F,
-    G: FinGroup,
-    F: Clone + Fn(G) -> K,
+    G: FinGroup + 'static,
+    F: Clone + Fn(G) -> K + 'static,
 {
     type Encaps = ElGamalEncaps<G, F>;
     type Decaps = ElGamalDecaps<G, F>;
 
     fn generate_caps(
         &self,
-        rng: &mut impl Rng,
+        rng: &mut dyn RngCore,
     ) -> (Self::Encaps, Self::Decaps) {
         let group_generator = (self.group_generator_gen)(rng);
         let key_from_group = (self.key_from_group_gen)(rng);
@@ -62,20 +63,12 @@ where
     }
 }
 
-impl<G, F, K> Caps for ElGamalEncaps<G, F>
-where
-    F: Fn(G) -> K,
-{
-    type Key = K;
-    type Cipher = G;
-}
-
 impl<G, F, K> Encapsulator for ElGamalEncaps<G, F>
 where
-    G: FinGroup,
+    G: FinGroup + 'static,
     F: Fn(G) -> K,
 {
-    fn encapsulate(&self, rng: &mut impl Rng) -> (Self::Key, Self::Cipher) {
+    fn encapsulate(&self, rng: &mut dyn RngCore) -> (Self::Key, Self::Cipher) {
         let y: isize = rng.gen();
         (
             (self.key_from_group)(self.group_key.clone() * y),
@@ -84,20 +77,12 @@ where
     }
 }
 
-impl<G, F, K> Caps for ElGamalDecaps<G, F>
-where
-    F: Fn(G) -> K,
-{
-    type Key = K;
-    type Cipher = G;
-}
-
 impl<G, F, K> Decapsulator for ElGamalDecaps<G, F>
 where
-    G: FinGroup,
+    G: FinGroup + 'static,
     F: Fn(G) -> K,
 {
-    type Error = ();
+    type Error = Infallible;
 
     fn decapsulate(
         &self,
@@ -105,4 +90,22 @@ where
     ) -> Result<Self::Key, Self::Error> {
         Ok((self.key_from_group)(cipher * self.secret))
     }
+}
+
+impl<G, F, K> Caps for ElGamalEncaps<G, F>
+where
+    G: 'static,
+    F: Fn(G) -> K,
+{
+    type Key = K;
+    type Cipher = G;
+}
+
+impl<G, F, K> Caps for ElGamalDecaps<G, F>
+where
+    G: 'static,
+    F: Fn(G) -> K,
+{
+    type Key = K;
+    type Cipher = G;
 }

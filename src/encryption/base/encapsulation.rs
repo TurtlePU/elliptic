@@ -1,23 +1,28 @@
-use rand::Rng;
+use std::error::Error;
+
+use rand::RngCore;
 
 pub trait Caps {
-    type Cipher;
+    type Cipher: 'static;
     type Key;
 }
 
 pub trait KeyEncapsulation: Caps {
-    type Encaps: Encapsulator<Cipher = Self::Cipher, Key = Self::Key>;
-    type Decaps: Decapsulator<Cipher = Self::Cipher, Key = Self::Key>;
+    type Encaps: Encapsulator<Cipher = Self::Cipher, Key = Self::Key> + 'static;
+    type Decaps: Decapsulator<Cipher = Self::Cipher, Key = Self::Key> + 'static;
 
-    fn generate_caps(&self, rng: &mut impl Rng) -> (Self::Encaps, Self::Decaps);
+    fn generate_caps(
+        &self,
+        rng: &mut dyn RngCore,
+    ) -> (Self::Encaps, Self::Decaps);
 }
 
 pub trait Encapsulator: Caps {
-    fn encapsulate(&self, rng: &mut impl Rng) -> (Self::Key, Self::Cipher);
+    fn encapsulate(&self, rng: &mut dyn RngCore) -> (Self::Key, Self::Cipher);
 }
 
 pub trait Decapsulator: Caps {
-    type Error;
+    type Error: Error + 'static;
 
     fn decapsulate(
         &self,

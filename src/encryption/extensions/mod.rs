@@ -1,0 +1,53 @@
+use crate::bytes::{Decoding, Deserialize, Encoding, Serialize};
+
+use self::{
+    hybrid::Hybrid,
+    object::{DynEncryption, DynError},
+    stringer::Stringer,
+    vectorized::Vectorized,
+};
+
+use super::base::{
+    encapsulation::KeyEncapsulation,
+    encryption::{Decryptor, Encryptor, PrivateKey, PublicKeyEncryption},
+};
+
+pub mod hybrid;
+pub mod object;
+pub mod stringer;
+pub mod vectorized;
+
+pub type EncryptorObject =
+    Box<dyn Encryptor<Message = String, Cipher = String>>;
+
+pub type DecryptorObject =
+    Box<dyn Decryptor<Message = String, Cipher = String, Error = DynError>>;
+
+pub type PublicEncObject = Box<
+    dyn PublicKeyEncryption<
+        Message = String,
+        Cipher = String,
+        PublicKey = EncryptorObject,
+        Secret = DecryptorObject,
+    >,
+>;
+
+pub fn public_encryption<E>(encryption: E) -> PublicEncObject
+where
+    E: PublicKeyEncryption + 'static,
+    E::Message: Encoding + Decoding,
+    E::Cipher: Serialize + Deserialize,
+{
+    Box::new(DynEncryption(Stringer(Vectorized(encryption))))
+}
+
+pub fn hybrid_encryption<E, K>(encapsulation: E) -> PublicEncObject
+where
+    E: KeyEncapsulation<Key = K> + 'static,
+    E::Cipher: Serialize + Deserialize,
+    K: PrivateKey,
+    K::Cipher: Serialize + Deserialize,
+    K::Message: Encoding + Decoding,
+{
+    Box::new(DynEncryption(Stringer(Hybrid(Vectorized(encapsulation)))))
+}

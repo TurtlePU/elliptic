@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use std::{convert::Infallible, marker::PhantomData};
 
 use rand::{Rng, RngCore};
 
@@ -21,6 +21,7 @@ pub struct ElGamalSecret<T> {
 impl<F, T> Enc for ElGamal<F>
 where
     F: Fn(&mut dyn RngCore) -> T,
+    T: 'static,
 {
     type Message = T;
     type Cipher = (T, T);
@@ -29,14 +30,14 @@ where
 impl<F, T> PublicKeyEncryption for ElGamal<F>
 where
     F: Fn(&mut dyn RngCore) -> T,
-    T: FinGroup,
+    T: FinGroup + 'static,
 {
     type PublicKey = ElGamalPublicKey<T>;
     type Secret = ElGamalSecret<T>;
 
     fn generate_keys(
         &self,
-        rng: &mut impl Rng,
+        rng: &mut dyn RngCore,
     ) -> (Self::PublicKey, Self::Secret) {
         let group_generator = (self.get_group_generator)(rng);
         let secret: isize = rng.gen();
@@ -54,13 +55,19 @@ where
     }
 }
 
-impl<T> Enc for ElGamalPublicKey<T> {
+impl<T> Enc for ElGamalPublicKey<T>
+where
+    T: 'static,
+{
     type Message = T;
     type Cipher = (T, T);
 }
 
-impl<T: FinGroup> Encryptor for ElGamalPublicKey<T> {
-    fn encrypt(&self, rng: &mut impl Rng, message: T) -> (T, T) {
+impl<T> Encryptor for ElGamalPublicKey<T>
+where
+    T: FinGroup + 'static,
+{
+    fn encrypt(&self, rng: &mut dyn RngCore, message: T) -> (T, T) {
         let y: isize = rng.gen();
         (
             self.group_generator.clone() * y,
@@ -69,13 +76,19 @@ impl<T: FinGroup> Encryptor for ElGamalPublicKey<T> {
     }
 }
 
-impl<T> Enc for ElGamalSecret<T> {
+impl<T> Enc for ElGamalSecret<T>
+where
+    T: 'static,
+{
     type Message = T;
     type Cipher = (T, T);
 }
 
-impl<T: FinGroup> Decryptor for ElGamalSecret<T> {
-    type Error = ();
+impl<T> Decryptor for ElGamalSecret<T>
+where
+    T: FinGroup + 'static,
+{
+    type Error = Infallible;
 
     fn decrypt(&self, (salt, cipher): (T, T)) -> Result<T, Self::Error> {
         Ok(cipher - salt * self.secret)
