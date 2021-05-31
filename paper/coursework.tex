@@ -1,0 +1,202 @@
+\documentclass[a4paper,14pt]{extarticle}
+\usepackage{geometry}
+\usepackage{fontspec}
+\setmainfont[
+  Ligatures=TeX,
+  Extension=.otf,
+  BoldFont=cmunbx,
+  ItalicFont=cmunti,
+  BoldItalicFont=cmunbi,
+]{cmunrm}
+\setsansfont[
+  Ligatures=TeX,
+  Extension=.otf,
+  BoldFont=cmunsx,
+  ItalicFont=cmunsi,
+]{cmunss}
+\usepackage[english,russian]{babel}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{fancyhdr}
+\usepackage{setspace}
+\usepackage{graphicx}
+\usepackage{colortbl}
+\usepackage{tikz}
+\usepackage{pgf}
+\usepackage{subcaption}
+\usepackage{listings}
+\usepackage{indentfirst}
+\usepackage[colorlinks,citecolor=blue,linkcolor=blue,bookmarks=false,hypertexnames=true, urlcolor=blue]{hyperref}
+\usepackage{indentfirst}
+\usepackage{mathtools}
+\usepackage{booktabs}
+\usepackage[flushleft]{threeparttable}
+\usepackage{tablefootnote}
+
+\usepackage{chngcntr} % нумерация графиков и таблиц по секциям
+\counterwithin{table}{section}
+\counterwithin{figure}{section}
+
+\usepackage[backend=biber, citestyle=authoryear]{biblatex}
+\addbibresource{bibliography.bib}
+\DeclareFieldFormat{labelnumberwidth}{#1\adddot}
+\setlength{\biblabelsep}{5pt}
+
+\makeatletter
+\renewcommand{\@biblabel}[1]{#1.} % Заменяем библиографию с квадратных скобок на точку:
+\makeatother
+
+\geometry{left=2.5cm}% левое поле
+\geometry{right=1.5cm}% правое поле
+\geometry{top=1.5cm}% верхнее поле
+\geometry{bottom=1.5cm}% нижнее поле
+\renewcommand{\baselinestretch}{1.5} % междустрочный интервал
+
+\renewcommand{\theenumi}{\arabic{enumi}}% Меняем везде перечисления на цифра.цифра
+\renewcommand{\labelenumi}{\arabic{enumi}}% Меняем везде перечисления на цифра.цифра
+\renewcommand{\theenumii}{.\arabic{enumii}}% Меняем везде перечисления на цифра.цифра
+\renewcommand{\labelenumii}{\arabic{enumi}.\arabic{enumii}.}% Меняем везде перечисления на цифра.цифра
+\renewcommand{\theenumiii}{.\arabic{enumiii}}% Меняем везде перечисления на цифра.цифра
+\renewcommand{\labelenumiii}{\arabic{enumi}.\arabic{enumii}.\arabic{enumiii}.}% Меняем везде перечисления на цифра.цифра
+
+\DeclareMathOperator{\chr}{char}
+
+\begin{document}
+\input{title.tex}% это титульный лист
+\newpage
+
+{
+    \hypersetup{linkcolor=black}
+    \tableofcontents
+}
+
+\newpage
+
+\section{Введение}
+
+Целью данной курсовой работы является знакомство с эллиптическими кривыми и их
+применением в криптографии. В ходе её выполнения мной был повторён и изучен
+необходимый алгебраический аппарат, базовые алгоритмы из несимметрической
+криптографии (криптографии с открытым ключом) и был написан код на Rust с
+имплементацией вышеуказанных конструкций.
+
+\section{Необходимые определения}
+
+\subsection{Из коммутативной алгебры}
+
+\begin{itemize}
+    \item Для \textbf{моноида} $(G, +, 0)$ выполнено:
+        \begin{itemize}
+            \item $G$ --- множество (не обязательно конечное);
+            \item $+: G \times G \to G$ --- ассоциативная операция;
+            \item $0 \in G$ нейтрален относительно $+$.
+        \end{itemize}
+    \item \textbf{Группа} $(G, +, 0, -)$ --- кортеж, для которого
+        выполено:
+        \begin{itemize}
+            \item $(G, +, 0)$ --- моноид;
+            \item для $-: G \to G$ выполнено $g + (-g) = 0$.
+        \end{itemize}
+    \item Алгебраическая структура называется \textbf{коммутативной}, если
+        ассоциированная с ней операция коммутативна. Коммутативные группы обычно
+        называются абелевыми.
+    \item \textbf{Циклическая группа} --- группа $(G, +, 0, -)$, для которой
+        существует генератор $g \in G$, т.е. для любого $h \in G$ есть
+        $n \in \mathbb{N}$ такое, что $h = g \cdot n$, где $g \cdot n$ ---
+        применение $+ g$ к $0$ $n$ раз.
+
+        Несложно заметить, что циклическая группа является абелевой.
+    \item \textbf{Поле} $(F, +, 0, -, \times, 1, \square^{-1})$ --- кортеж,
+        обладающий следующими свойствами:
+        \begin{itemize}
+            \item $(F, +, 0, -)$ --- абелева группа;
+            \item $0 \ne 1$;
+            \item $(F, \times, 1)$ --- коммутативный моноид;
+            \item $(F \setminus \{0\}, \times, 1, \square^{-1})$ --- тоже
+                абелева группа (в частности, $\times$ замкнута относительно
+                $F \setminus \{0\}$);
+            \item $\times$ дистрибутивно относительно $+$.
+        \end{itemize}
+    \item \textbf{Характеристика поля} $\chr F$ --- такое $n \in \mathbb{N}$,
+        что $1_F \cdot n = 0_F$.
+    \item Пусть $\mathbb{F}$ --- произвольное поле. Тогда мы можем определить
+        \textbf{эллиптическую кривую} как гладкую кривую в $\mathbb{F}^2$,
+        которая задаётся уравнением
+        \[
+            y^2 + a x y + b y = x^3 + c x^2 + d x + e,
+        \]
+        Где коэффициенты выбираются из поля $\mathbb{F}$.
+
+        Если $\chr F > 3$, то это уравнение с помощью замены
+        координат можно привести к форме
+        \[
+            y^2 = x^3 + a x + b.
+        \]
+        Критерий гладкости: $4 a^3 + 27 b^2 \ne 0$.
+    \item \textbf{Проективное пространство} над полем $\mathbb{F}$ ---
+        пространство прямых некоторого линейного пространства над $\mathbb{F}$.
+        Точки этого пространства можно описывать с помощью однородных координат,
+        т.е. координат точек исходного пространства с определённым на них
+        отношением эквивалентности $\sim$:
+        \[
+            \forall \lambda \in \mathbb{F} \setminus \{0\}: x \sim \lambda x.
+        \]
+\end{itemize}
+
+\subsection{Из криптографии}
+
+\begin{itemize}
+    \item \textbf{Схема приватного шифрования}
+        $(\verb|Gen|, \verb|Enc|, \verb|Dec|)$ --- тройка функций, где
+        \begin{itemize}
+            \item $\verb|Gen|: R \to K$ --- генератор приватного ключа,
+            \item $\verb|Enc|: (K, R, M) \to C$ --- операция шифрования,
+            \item $\verb|Dec|: (K, C) \to M \sqcup \bot$ --- операция
+                дешифровки,
+            \item $R$ --- множество источников случайных чисел,
+            \item $K$ --- пространство приватных ключей,
+            \item $M$ --- пространство передаваемых сообщений,
+            \item $C$ --- пространство шифров.
+        \end{itemize}
+        Как следует из сигнатуры \verb|Dec|, дешифровка имеет право провалиться,
+        если ей будет передан невалидный шифр.
+    \item \textbf{Схема публичного шифрования}
+        (\verb|Gen|, \verb|Enc|, \verb|Dec|) --- другая тройка функций. Для неё
+        должно быть выполнено следующее:
+        \begin{itemize}
+            \item $\verb|Gen|: R \to (S, P)$ --- генератор пары
+                из тайного и публичного ключа,
+            \item $\verb|Enc|: (P, R, M) \to C$ --- операция шифрования,
+            \item $\verb|Dec|: (S, C) \to M \sqcup \bot$ --- операция
+                дешифровки,
+            \item $S$ --- пространство тайных (приватных) ключей,
+            \item $P$ --- пространство публичных ключей.
+        \end{itemize}
+        Обозначения и оговорка про провал дешифровки те же, что выше.
+    \item Тройка функций $(\verb|Gen|, \verb|Encaps|, \verb|Decaps|)$ называется
+        \textbf{Механизмом инкапсуляции ключа}, если
+        \begin{itemize}
+            \item $\verb|Gen|: R \to (S, P)$ --- генератор пары
+                из ``базовых'' тайного и публичного ключа;
+            \item $\verb|Encaps|: (P, R) \to (C, K)$ --- генератор сессионного
+                ключа и его шифра;
+            \item $\verb|Decaps|: (S, C) \to K \sqcup \bot$ --- алгоритм
+                получения сессионного ключа по его шифру.
+        \end{itemize}
+    \item \textbf{Задача дискретного логарифмирования} формулируется так: дана
+        циклическая группа $(G, +, \dots)$, её генератор $g$ и некоторый
+        $h \in G$. Требуется найти $k \in \mathbb{N}$ такое, что
+        $g \cdot k = h$ ($g \cdot k \vcentcolon= g + g \cdot (k - 1)$).
+    \item Задача называется \textbf{сложной}, если для любого её полиномиального
+        вероятностного решения вероятность правильного ответа ограничена сверху
+        пренебрежимо малой относительно размера входа величиной.
+    \item \textbf{Вычислительная задача Диффи-Хеллмана} (CDH): дана циклическая
+        группа $(G, +, \dots)$, её генератор $g$ и некоторые $h_1, h_2 \in G$.
+\end{itemize}
+
+\newpage
+
+\printbibliography[heading=bibintoc]
+
+\end{document}
