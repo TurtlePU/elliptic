@@ -4,7 +4,7 @@ use std::{
     ops::{Add, Div, Mul, Neg, Sub},
 };
 
-use num_bigint::BigUint;
+use num_bigint::{BigInt, BigUint};
 use num_traits::{Inv, One, Pow, Zero};
 use rand::{distributions::Standard, prelude::Distribution, Fill};
 
@@ -136,14 +136,14 @@ where
     }
 }
 
-impl<T, I> Mul<isize> for PolyField<T, I>
+impl<T, I> Mul<BigInt> for PolyField<T, I>
 where
     I: Irreducible<T>,
     Poly<T>: Integral,
 {
     type Output = Self;
 
-    fn mul(self, rhs: isize) -> Self::Output {
+    fn mul(self, rhs: BigInt) -> Self::Output {
         I::into_field(self.0 * rhs)
     }
 }
@@ -170,14 +170,14 @@ where
     }
 }
 
-impl<T, I> Pow<usize> for PolyField<T, I>
+impl<T, I> Pow<BigUint> for PolyField<T, I>
 where
     I: Irreducible<T>,
     Poly<T>: Integral,
 {
     type Output = Self;
 
-    fn pow(self, rhs: usize) -> Self::Output {
+    fn pow(self, rhs: BigUint) -> Self::Output {
         I::into_field(self.0.pow(rhs))
     }
 }
@@ -245,18 +245,23 @@ where
 #[cfg(test)]
 mod tests {
     use super::{Irreducible, PolyField};
-    use crate::{
-        algebra::{fields::Zn, poly::Poly},
-        poly,
-    };
+    use crate::{algebra::{fields::zn::{BigPrime, Zn}, poly::Poly}, poly};
+    use num_bigint::BigUint;
 
+    pub struct Z5;
     pub struct XcubePlus2;
 
-    impl Irreducible<Zn<5>> for XcubePlus2 {
-        fn modulo() -> Poly<Zn<5>> {
+    impl BigPrime for Z5 {
+        fn value() -> BigUint {
+            BigUint::from(5usize)
+        }
+    }
+
+    impl Irreducible<Zn<Z5>> for XcubePlus2 {
+        fn modulo() -> Poly<Zn<Z5>> {
             poly![2, 0, 0, 1]
         }
     }
 
-    type F = PolyField<Zn<5>, XcubePlus2>;
+    type F = PolyField<Z5, XcubePlus2>;
 }

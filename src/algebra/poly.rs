@@ -7,6 +7,7 @@ use itertools::{
     EitherOrBoth::{self, *},
     Itertools,
 };
+use num_bigint::{BigInt, BigUint};
 use num_traits::{One, Pow, Zero};
 use rand::{distributions::Standard, prelude::Distribution, Error, Fill, Rng};
 
@@ -137,7 +138,7 @@ where
     }
 }
 
-impl<T: Group> Add for Poly<T> {
+impl<T> Add for Poly<T> where T: Add<Output = T> + Zero {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
@@ -148,7 +149,7 @@ impl<T: Group> Add for Poly<T> {
     }
 }
 
-impl<T: Group> Sub for Poly<T> {
+impl<T> Sub for Poly<T> where T: Sub<Output = T> + Zero {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self::Output {
@@ -168,11 +169,11 @@ impl<T: Neg> Neg for Poly<T> {
     }
 }
 
-impl<T: Group> Mul<isize> for Poly<T> {
+impl<T: Group> Mul<BigInt> for Poly<T> {
     type Output = Self;
 
-    fn mul(self, rhs: isize) -> Self::Output {
-        Self(self.0.into_iter().map(|x| x * rhs).collect())
+    fn mul(self, rhs: BigInt) -> Self::Output {
+        Self(self.0.into_iter().map(|x| x * rhs.clone()).collect())
     }
 }
 
@@ -182,7 +183,7 @@ impl<T: Group> Sum for Poly<T> {
     }
 }
 
-impl<T: Ring> Mul for Poly<T> {
+impl<T> Mul for Poly<T> where T: Clone + Mul<Output = T> + Sum {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
@@ -206,10 +207,10 @@ impl<T: Ring> Mul for Poly<T> {
     }
 }
 
-impl<T: Ring> Pow<usize> for Poly<T> {
+impl<T: Ring> Pow<BigUint> for Poly<T> {
     type Output = Self;
 
-    fn pow(self, rhs: usize) -> Self::Output {
+    fn pow(self, rhs: BigUint) -> Self::Output {
         repeat_monoid(Self::mul, rhs, self, Self::one())
     }
 }
@@ -236,7 +237,7 @@ impl<T: Field> Rem for Poly<T> {
     }
 }
 
-impl<T: Group> Zero for Poly<T> {
+impl<T> Zero for Poly<T> where Self: Add<Output = Self> {
     fn zero() -> Self {
         Self(Vec::default())
     }
@@ -282,9 +283,10 @@ impl<T: Field> Mul<Poly<T>> for Monome<T> {
 
 #[cfg(test)]
 mod tests {
+    use num_bigint::BigUint;
     use num_traits::Zero;
 
-    use crate::algebra::fields::Zn;
+    use crate::algebra::fields::zn::{BigPrime, Zn};
 
     use super::Poly;
 
@@ -321,12 +323,21 @@ mod tests {
 
     #[test]
     fn div_rem() {
-        let a: Poly<Zn<3>> = poly![0, 0, 1];
+        let a: Poly<Zn<Z3>> = poly![0, 0, 1];
         let b = poly![1, 1];
         let rem = poly![1];
         let div = poly![2, 1];
         assert_eq!((rem.clone(), div.clone()), a.clone().rem_div(b.clone()));
         assert!(a.clone() / b.clone() == div);
         assert!(a.clone() % b.clone() == rem);
+    }
+
+    #[derive(Debug)]
+    pub struct Z3;
+
+    impl BigPrime for Z3 {
+        fn value() -> BigUint {
+            BigUint::from(3usize)
+        }
     }
 }

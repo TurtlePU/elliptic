@@ -24,18 +24,22 @@ fn replace<T>(src: T, dest: &mut T) -> T {
 }
 
 /// `app(result, value x cnt)`
-pub fn repeat_monoid<T, F>(app: F, cnt: usize, value: T, result: T) -> T
+pub fn repeat_monoid<T, F>(app: F, mut cnt: BigUint, mut value: T, mut result: T) -> T
 where
     T: Clone,
-    F: Clone + Fn(T, T) -> T,
+    F: Fn(T, T) -> T,
 {
-    if cnt == 0 {
-        result
-    } else if cnt % 2 == 0 {
-        repeat_monoid(app.clone(), cnt / 2, app(value.clone(), value), result)
-    } else {
-        repeat_monoid(app.clone(), cnt - 1, value.clone(), app(result, value))
+    let two = BigUint::from(2usize);
+    while !cnt.is_zero() {
+        if (&cnt % &two).is_zero() {
+            cnt /= &two;
+            value = app(value.clone(), value);
+        } else {
+            cnt -= BigUint::one();
+            result = app(result, value.clone());
+        }
     }
+    result
 }
 
 pub fn is_prime(value: BigUint) -> bool {
@@ -56,39 +60,52 @@ pub fn is_prime(value: BigUint) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use num_bigint::BigUint;
-    use num_traits::FromPrimitive;
+    use num_bigint::{BigInt, BigUint, Sign};
+    use num_traits::{One, Zero};
 
     use super::replace;
     use std::ops::Add;
 
     #[test]
     fn repeat_monoid() {
-        for n in 0..100000 {
-            assert_eq!(super::repeat_monoid(usize::add, n, 1, 0), n);
+        for n in 0..100000usize {
+            let n = BigUint::from(n);
+            assert_eq!(
+                super::repeat_monoid(
+                    BigUint::add,
+                    n.clone(),
+                    BigUint::one(),
+                    BigUint::zero()
+                ),
+                n
+            );
         }
     }
 
-    fn gcd(mut a: isize, mut b: isize) -> isize {
-        while b != 0 {
-            a = replace(a % b, &mut b);
+    fn gcd(mut a: BigInt, mut b: BigInt) -> BigInt {
+        while !b.is_zero() {
+            a = replace(a % b.clone(), &mut b);
         }
         a
     }
 
     #[test]
     fn extended_gcd() {
+        let mut aa = BigInt::zero();
+        let mut bb = BigInt::zero();
         for a in 1..800 {
             for b in 1..=a {
-                let (g, x, y) = super::extended_gcd(a, b);
-                assert_eq!(g, a * x + b * y);
-                assert_eq!(g, gcd(a, b));
+                aa.assign_from_slice(Sign::Plus, &[a]);
+                bb.assign_from_slice(Sign::Plus, &[b]);
+                let (g, x, y) = super::extended_gcd(aa.clone(), bb.clone());
+                assert_eq!(g, aa.clone() * x + bb.clone() * y);
+                assert_eq!(g, gcd(aa.clone(), bb.clone()));
             }
         }
     }
 
     fn is_prime(value: usize) -> bool {
-        super::is_prime(BigUint::from_usize(value).unwrap())
+        super::is_prime(BigUint::from(value))
     }
 
     #[test]

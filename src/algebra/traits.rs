@@ -3,7 +3,7 @@ use std::{
     ops::{Add, Div, Mul, Neg, Rem, Sub},
 };
 
-use num_bigint::BigUint;
+use num_bigint::{BigInt, BigUint};
 use num_traits::{Inv, One, Pow, Zero};
 
 pub trait Value: Clone + Eq {}
@@ -14,7 +14,7 @@ pub trait BasicGroup:
 }
 
 pub trait Group:
-    BasicGroup + Sub<Output = Self> + Mul<isize, Output = Self> + Sum
+    BasicGroup + Sub<Output = Self> + Mul<BigInt, Output = Self> + Sum
 {
 }
 
@@ -23,7 +23,7 @@ pub trait FinGroup: Group {
 }
 
 pub trait Ring:
-    Group + One + Mul<Output = Self> + Pow<usize, Output = Self> + Product
+    Group + One + Mul<Output = Self> + Pow<BigUint, Output = Self> + Product
 {
 }
 
@@ -44,6 +44,6 @@ impl<T> BasicGroup for T where
 
 impl<T> Integral for T where T: Ring + Div<Output = Self> + Rem<Output = Self> {}
 
-impl Group for isize {}
+impl Group for BigInt {}
 
-impl Ring for isize {}
+impl Ring for BigInt {}

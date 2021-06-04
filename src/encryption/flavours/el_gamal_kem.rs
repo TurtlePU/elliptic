@@ -1,4 +1,6 @@
 use crate::{algebra::traits::FinGroup, encryption::base::encapsulation::*};
+use num_bigint::BigInt;
+use num_traits::One;
 use rand::{Rng, RngCore};
 use std::{convert::Infallible, marker::PhantomData};
 
@@ -14,7 +16,7 @@ pub struct ElGamalEncaps<G, F> {
 }
 
 pub struct ElGamalDecaps<G, F> {
-    pub secret: isize,
+    pub secret: BigInt,
     pub key_from_group: F,
     pub group: PhantomData<G>,
 }
@@ -46,8 +48,8 @@ where
     ) -> (Self::Encaps, Self::Decaps) {
         let group_generator = (self.group_generator_gen)(rng);
         let key_from_group = (self.key_from_group_gen)(rng);
-        let secret: isize = rng.gen();
-        let group_key = group_generator.clone() * secret;
+        let secret = rng.gen_range(BigInt::one()..G::order().into());
+        let group_key = group_generator.clone() * secret.clone();
         (
             ElGamalEncaps {
                 group_key,
@@ -69,9 +71,9 @@ where
     F: Fn(G) -> K,
 {
     fn encapsulate(&self, rng: &mut dyn RngCore) -> (Self::Key, Self::Cipher) {
-        let y: isize = rng.gen();
+        let y = rng.gen_range(BigInt::one()..G::order().into());
         (
-            (self.key_from_group)(self.group_key.clone() * y),
+            (self.key_from_group)(self.group_key.clone() * y.clone()),
             self.group_generator.clone() * y,
         )
     }
@@ -88,7 +90,7 @@ where
         &self,
         cipher: Self::Cipher,
     ) -> Result<Self::Key, Self::Error> {
-        Ok((self.key_from_group)(cipher * self.secret))
+        Ok((self.key_from_group)(cipher * self.secret.clone()))
     }
 }
 

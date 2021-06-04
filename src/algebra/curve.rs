@@ -1,4 +1,5 @@
 use std::{
+    convert::TryInto,
     error::Error,
     fmt::Debug,
     iter::Sum,
@@ -6,7 +7,7 @@ use std::{
     ops::{Add, Mul, Neg, Sub},
 };
 
-use num_bigint::BigUint;
+use num_bigint::{BigInt, BigUint};
 use num_traits::Zero;
 use rand::{distributions::Standard, prelude::Distribution, Rng};
 use thiserror::Error;
@@ -30,6 +31,17 @@ pub trait Curve<F: Field>: Sized {
             Err(NotOnCurve)
         }
     }
+}
+
+pub fn check_char<F: Debug + Field>() {
+    assert!(F::one() + F::one() != F::zero());
+    assert!(F::one() + F::one() + F::one() != F::zero());
+}
+
+pub fn check_curve<F: Debug + Field, C: Curve<F>>() {
+    check_char::<F>();
+    let prop = cube(C::a()) * four() + sq(C::b()) * BigInt::from(27usize);
+    assert_ne!(prop, F::zero());
 }
 
 pub trait Encoder<T> {
@@ -158,27 +170,28 @@ impl<F: Field, C: Curve<F>> Add for EllipticPoint<F, C> {
         } else if self == -rhs.clone() {
             Self::zero()
         } else if self == rhs {
-            let q = self.y() * self.z() * 2;
-            let n = self.x().pow(2) * 3 + C::a() * self.z().pow(2);
-            let p = self.x() * self.y().pow(2) * self.z() * 4;
-            let u = n.clone().pow(2) - p.clone() * 2;
+            let q = self.y() * self.z() * two();
+            let n = sq(self.x()) * three() + C::a() * sq(self.z());
+            let p = self.x() * sq(self.y()) * self.z() * four();
+            let u = sq(n.clone()) - p.clone() * two();
 
             let x = u.clone() * q.clone();
-            let z = q.pow(3);
-            let y = n * (p - u) - self.y().pow(4) * self.z().pow(2) * 8;
+            let z = cube(q);
+            let eight = BigInt::from(8usize);
+            let y = n * (p - u) - sq(sq(self.y()) * self.z()) * eight;
 
             Self::new(x, y, z)
         } else {
             let u = rhs.y() * self.z() - self.y() * rhs.z();
             let v = rhs.x() * self.z() - self.x() * rhs.z();
-            let w = u.clone().pow(2) * self.z() * rhs.z()
-                - v.clone().pow(3)
-                - v.clone().pow(2) * 2 * self.x() * rhs.z();
-            let q = v.clone().pow(3) * self.y() * rhs.z();
+            let w = sq(u.clone()) * self.z() * rhs.z()
+                - cube(v.clone())
+                - sq(v.clone()) * two() * self.x() * rhs.z();
+            let q = cube(v.clone()) * self.y() * rhs.z();
 
             let x = v.clone() * w.clone();
-            let z = self.z() * rhs.z() * v.clone().pow(3);
-            let y = u * (v.pow(2) * self.x() * rhs.z() - w) - q;
+            let z = self.z() * rhs.z() * cube(v.clone());
+            let y = u * (sq(v) * self.x() * rhs.z() - w) - q;
 
             Self::new(x, y, z)
         }
@@ -202,14 +215,13 @@ impl<F: Field, C: Curve<F>> Neg for EllipticPoint<F, C> {
     }
 }
 
-impl<F: Field, C: Curve<F>> Mul<isize> for EllipticPoint<F, C> {
+impl<F: Field, C: Curve<F>> Mul<BigInt> for EllipticPoint<F, C> {
     type Output = Self;
 
-    fn mul(self, rhs: isize) -> Self::Output {
-        if rhs < 0 {
-            -self * -rhs
-        } else {
-            repeat_monoid(Self::add, rhs as usize, self, Self::zero())
+    fn mul(self, rhs: BigInt) -> Self::Output {
+        match rhs.try_into() {
+            Ok(rhs) => repeat_monoid(Self::add, rhs, self, Self::zero()),
+            Err(err) => -self * -err.into_original(),
         }
     }
 }
@@ -231,29 +243,6 @@ impl<F: Field, C: Curve<F>> Zero for EllipticPoint<F, C> {
     fn is_zero(&self) -> bool {
         self.is_infinite()
     }
-}
-
-pub fn check_char<F: Debug + Field>() {
-    assert_ne!(F::one() * 2, F::zero());
-    assert_ne!(F::one() * 3, F::zero());
-}
-
-pub fn check_curve<F: Debug + Field, C: Curve<F>>() {
-    check_char::<F>();
-    let prop = C::a().pow(3) * 4 + C::b().pow(2) * 27;
-    assert_ne!(prop, F::zero());
-}
-
-fn check_solution<F: Field, C: Curve<F>>(x: F, y: F) -> bool {
-    y.pow(2) == right_side::<F, C>(x)
-}
-
-fn solve<F: Field + Sqrt, C: Curve<F>>(x: F) -> Option<F> {
-    right_side::<F, C>(x).sqrt()
-}
-
-fn right_side<F: Field, C: Curve<F>>(x: F) -> F {
-    x.clone().pow(3) + C::a() * x + C::b()
 }
 
 impl<F, C> Encoding for EllipticPoint<F, C>
@@ -325,4 +314,36 @@ pub enum PointDeserError<E: Debug + Error + 'static> {
     NotEnoughBytes,
     #[error(transparent)]
     NotOnCurve(NotOnCurve),
+}
+
+fn check_solution<F: Field, C: Curve<F>>(x: F, y: F) -> bool {
+    sq(y) == right_side::<F, C>(x)
+}
+
+fn solve<F: Field + Sqrt, C: Curve<F>>(x: F) -> Option<F> {
+    right_side::<F, C>(x).sqrt()
+}
+
+fn right_side<F: Field, C: Curve<F>>(x: F) -> F {
+    cube(x.clone()) + C::a() * x + C::b()
+}
+
+fn two() -> BigInt {
+    BigInt::from(2usize)
+}
+
+fn three() -> BigInt {
+    BigInt::from(3usize)
+}
+
+fn four() -> BigInt {
+    BigInt::from(4usize)
+}
+
+fn sq<T: Clone + Mul>(x: T) -> T::Output {
+    x.clone() * x
+}
+
+fn cube<T: Clone + Mul<Output = T>>(x: T) -> T {
+    sq(x.clone()) * x
 }

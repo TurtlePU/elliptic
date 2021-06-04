@@ -1,5 +1,7 @@
 use std::{convert::Infallible, marker::PhantomData};
 
+use num_bigint::BigInt;
+use num_traits::One;
 use rand::{Rng, RngCore};
 
 use crate::{algebra::traits::FinGroup, encryption::base::encryption::*};
@@ -22,7 +24,7 @@ pub struct ElGamalPublicKey<T> {
 }
 
 pub struct ElGamalSecret<T> {
-    pub secret: isize,
+    pub secret: BigInt,
     pub group: PhantomData<T>,
 }
 
@@ -48,8 +50,8 @@ where
         rng: &mut dyn RngCore,
     ) -> (Self::PublicKey, Self::Secret) {
         let group_generator = (self.get_group_generator)(rng);
-        let secret: isize = rng.gen();
-        let key = group_generator.clone() * secret;
+        let secret = rng.gen_range(BigInt::one()..T::order().into());
+        let key = group_generator.clone() * secret.clone();
         (
             ElGamalPublicKey {
                 group_generator,
@@ -76,9 +78,9 @@ where
     T: FinGroup + 'static,
 {
     fn encrypt(&self, rng: &mut dyn RngCore, message: T) -> (T, T) {
-        let y: isize = rng.gen();
+        let y = rng.gen_range(BigInt::one()..T::order().into());
         (
-            self.group_generator.clone() * y,
+            self.group_generator.clone() * y.clone(),
             self.key.clone() * y + message,
         )
     }
@@ -99,6 +101,6 @@ where
     type Error = Infallible;
 
     fn decrypt(&self, (salt, cipher): (T, T)) -> Result<T, Self::Error> {
-        Ok(cipher - salt * self.secret)
+        Ok(cipher - salt * self.secret.clone())
     }
 }

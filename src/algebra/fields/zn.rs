@@ -1,68 +1,91 @@
 use std::{
     array::TryFromSliceError,
-    convert::TryInto,
+    convert::TryFrom,
     iter::{Product, Sum},
+    marker::PhantomData,
     ops::{Add, Div, Mul, Neg, Sub},
 };
 
-use num_bigint::BigUint;
+use num_bigint::{BigInt, BigUint};
 use num_traits::{Inv, One, Pow, Zero};
-use rand::{
-    distributions::{
-        uniform::{SampleBorrow, SampleUniform, UniformInt, UniformSampler},
-        Standard,
-    },
-    prelude::Distribution,
-    Rng,
-};
+use rand::{distributions::Standard, prelude::Distribution};
 
 use crate::{
     algebra::{
         algo::{extended_gcd, is_prime, repeat_monoid},
         traits::{Field, FinGroup, Group, Ring, Sqrt},
     },
-    bytes::{Decoding, Deserialize, Encoding, Serialize},
+    bytes::{Deserialize, Serialize},
 };
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Zn<const N: usize>(usize);
+pub trait BigPrime {
+    fn value() -> BigUint;
+    fn bytes() -> usize {
+        Self::value().to_bytes_le().len()
+    }
+}
 
-impl<const N: usize> Group for Zn<N> {}
+#[derive(Debug)]
+pub struct Zn<N>(BigUint, PhantomData<N>);
 
-impl<const N: usize> FinGroup for Zn<N> {
+impl<N: BigPrime> Group for Zn<N> {}
+
+impl<N: BigPrime> FinGroup for Zn<N> {
     fn order() -> BigUint {
-        BigUint::from(N)
+        N::value()
     }
 }
 
-impl<const N: usize> Ring for Zn<N> {}
+impl<N: BigPrime> Ring for Zn<N> {}
 
-impl<const N: usize> Field for Zn<N> {}
+impl<N: BigPrime> Field for Zn<N> {}
 
-impl<const N: usize> From<usize> for Zn<N> {
-    fn from(n: usize) -> Self {
-        Self(n % N)
+impl<N: BigPrime> From<BigUint> for Zn<N> {
+    fn from(n: BigUint) -> Self {
+        Self(n % N::value(), PhantomData)
     }
 }
 
-impl<const N: usize> From<Zn<N>> for usize {
+impl<N: BigPrime> From<usize> for Zn<N> {
+    fn from(x: usize) -> Self {
+        Self::from(BigUint::from(x))
+    }
+}
+
+impl<N: BigPrime> From<Zn<N>> for BigUint {
     fn from(zn: Zn<N>) -> Self {
         zn.0
     }
 }
 
-impl<const N: usize> Distribution<Zn<N>> for Standard {
+impl<N: BigPrime> Distribution<Zn<N>> for Standard {
     fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> Zn<N> {
         Zn::from(rng.gen::<usize>())
     }
 }
 
-impl<const N: usize> Sqrt for Zn<N> {
+impl<N> Clone for Zn<N> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone(), PhantomData)
+    }
+}
+
+impl<N> PartialEq for Zn<N> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl<N> Eq for Zn<N> where BigUint: Eq {}
+
+impl<N: BigPrime> Sqrt for Zn<N> {
     fn sqrt(self) -> Option<Self> {
         assert!(is_prime(Self::order()));
-        assert!((N + 1) % 4 == 0);
-        let sqrt = self.clone().pow((N + 1) / 4);
-        if sqrt.clone().pow(2) == self {
+        let one = BigUint::one();
+        let four = BigUint::from(4usize);
+        assert!(((N::value() + one.clone()) % four.clone()).is_zero());
+        let sqrt = self.clone().pow((N::value() + one) / four);
+        if sqrt.clone().pow(BigUint::from(2usize)) == self {
             Some(sqrt)
         } else {
             None
@@ -70,7 +93,7 @@ impl<const N: usize> Sqrt for Zn<N> {
     }
 }
 
-impl<const N: usize> Add for Zn<N> {
+impl<N: BigPrime> Add for Zn<N> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
@@ -78,15 +101,15 @@ impl<const N: usize> Add for Zn<N> {
     }
 }
 
-impl<const N: usize> Neg for Zn<N> {
+impl<N: BigPrime> Neg for Zn<N> {
     type Output = Self;
 
     fn neg(self) -> Self::Output {
-        Self::from(N - self.0)
+        Self::from(N::value() - self.0)
     }
 }
 
-impl<const N: usize> Sub for Zn<N> {
+impl<N: BigPrime> Sub for Zn<N> {
     type Output = Self;
 
     fn sub(self, rhs: Self) -> Self::Output {
@@ -94,25 +117,24 @@ impl<const N: usize> Sub for Zn<N> {
     }
 }
 
-impl<const N: usize> Mul<isize> for Zn<N> {
+impl<N: BigPrime> Mul<BigInt> for Zn<N> {
     type Output = Self;
 
-    fn mul(self, rhs: isize) -> Self::Output {
-        if rhs < 0 {
-            -self * -rhs
-        } else {
-            Self::from(self.0 * rhs as usize)
+    fn mul(self, rhs: BigInt) -> Self::Output {
+        match BigUint::try_from(rhs) {
+            Ok(rhs) => Self::from(self.0 * rhs),
+            Err(err) => -self * -err.into_original(),
         }
     }
 }
 
-impl<const N: usize> Sum for Zn<N> {
+impl<N: BigPrime> Sum for Zn<N> {
     fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
-        Self::from(iter.map(|x| x.0).sum::<usize>())
+        Self::from(iter.map(|x| x.0).sum::<BigUint>())
     }
 }
 
-impl<const N: usize> Mul for Zn<N> {
+impl<N: BigPrime> Mul for Zn<N> {
     type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
@@ -120,35 +142,36 @@ impl<const N: usize> Mul for Zn<N> {
     }
 }
 
-impl<const N: usize> Pow<usize> for Zn<N> {
+impl<N: BigPrime> Pow<BigUint> for Zn<N> {
     type Output = Self;
 
-    fn pow(self, rhs: usize) -> Self::Output {
-        Self::from(repeat_monoid(usize::mul, rhs, self.0, 1))
+    fn pow(self, rhs: BigUint) -> Self::Output {
+        Self::from(repeat_monoid(BigUint::mul, rhs, self.0, BigUint::one()))
     }
 }
 
-impl<const N: usize> Product for Zn<N> {
+impl<N: BigPrime> Product for Zn<N> {
     fn product<I: Iterator<Item = Self>>(iter: I) -> Self {
         iter.into_iter().fold(Self::one(), Self::mul)
     }
 }
 
-impl<const N: usize> Inv for Zn<N> {
+impl<N: BigPrime> Inv for Zn<N> {
     type Output = Self;
 
     fn inv(self) -> Self::Output {
-        let n: isize = N.try_into().unwrap();
-        let (gcd, mut inv, _) = extended_gcd(self.0.try_into().unwrap(), n);
+        let n: BigInt = N::value().into();
+        let (gcd, mut inv, _) = extended_gcd(self.0.into(), n.clone());
         assert!(gcd.is_one());
-        while inv < 0 {
+        inv = inv % &n;
+        if inv < BigInt::zero() {
             inv += n;
         }
-        Self(inv.try_into().unwrap())
+        Self::from(BigUint::try_from(inv).unwrap())
     }
 }
 
-impl<const N: usize> Div for Zn<N> {
+impl<N: BigPrime> Div for Zn<N> {
     type Output = Self;
 
     fn div(self, rhs: Self) -> Self::Output {
@@ -156,124 +179,136 @@ impl<const N: usize> Div for Zn<N> {
     }
 }
 
-impl<const N: usize> Zero for Zn<N> {
+impl<N: BigPrime> Zero for Zn<N> {
     fn zero() -> Self {
         Self::from(0)
     }
 
     fn is_zero(&self) -> bool {
-        self.0 == 0
+        self.0.is_zero()
     }
 }
 
-impl<const N: usize> One for Zn<N> {
+impl<N: BigPrime> One for Zn<N> {
     fn one() -> Self {
         Self::from(1)
     }
 }
 
-impl<const N: usize> Encoding for Zn<N> {
-    fn encode(stream: &mut impl Iterator<Item = u8>) -> Option<Self> {
-        assert!(N > u8::MAX as usize);
-        stream.next().map(|x| usize::from(x).into())
-    }
-}
-
-impl<const N: usize> Decoding for Zn<N> {
-    type Error = <usize as TryInto<u8>>::Error;
-
-    fn decode(self) -> Result<Vec<u8>, Self::Error> {
-        self.0.try_into().map(|x| vec![x])
-    }
-}
-
-impl<const N: usize> Serialize for Zn<N> {
+impl<N: BigPrime> Serialize for Zn<N> {
     fn serialize(self) -> Vec<u8> {
-        self.0.to_be_bytes().into()
+        let mut result = self.0.to_bytes_le();
+        result.resize(N::bytes(), 0);
+        result
     }
 }
 
-impl<const N: usize> Deserialize for Zn<N> {
+impl<N: BigPrime> Deserialize for Zn<N> {
     type Error = TryFromSliceError;
 
     fn deserialize(
         stream: &mut impl Iterator<Item = u8>,
     ) -> Result<Option<Self>, Self::Error> {
-        const BYTES: usize = std::mem::size_of::<usize>();
-        let vec: Vec<_> = (0..BYTES).filter_map(|_| stream.next()).collect();
+        let vec: Vec<_> =
+            (0..N::bytes()).filter_map(|_| stream.next()).collect();
         if vec.is_empty() {
             Ok(None)
         } else {
-            Ok(Some(Self::from(usize::from_be_bytes(vec[..].try_into()?))))
+            Ok(Some(Self::from(BigUint::from_bytes_le(&vec[..]))))
         }
     }
 }
 
-pub struct UniformZn<const N: usize>(UniformInt<usize>);
-
-impl<const N: usize> UniformSampler for UniformZn<N> {
-    type X = Zn<N>;
-
-    fn new<B1, B2>(low: B1, high: B2) -> Self
-    where
-        B1: SampleBorrow<Self::X> + Sized,
-        B2: SampleBorrow<Self::X> + Sized,
-    {
-        Self(UniformInt::new(
-            usize::from(*low.borrow()),
-            usize::from(*high.borrow()),
-        ))
-    }
-
-    fn new_inclusive<B1, B2>(low: B1, high: B2) -> Self
-    where
-        B1: SampleBorrow<Self::X> + Sized,
-        B2: SampleBorrow<Self::X> + Sized,
-    {
-        Self(UniformInt::new_inclusive(
-            usize::from(*low.borrow()),
-            usize::from(*high.borrow()),
-        ))
-    }
-
-    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Self::X {
-        Zn::from(self.0.sample(rng))
-    }
-}
-
-impl<const N: usize> SampleUniform for Zn<N> {
-    type Sampler = UniformZn<N>;
-}
-
 #[cfg(test)]
 mod tests {
+    use num_bigint::BigUint;
     use num_traits::{Inv, Pow, Zero};
 
-    use crate::algebra::{fields::Zn, traits::Sqrt};
+    use crate::algebra::{
+        fields::zn::{BigPrime, Zn},
+        traits::Sqrt,
+    };
 
     #[test]
     fn add() {
-        assert!((Zn::<74>::from(69) + Zn::from(5)).is_zero());
-        assert!(Zn::<180>::from(174) + Zn::from(389) == Zn::from(23));
-        assert!(-Zn::<47>::from(111) == Zn::from(30));
+        assert!((Zn::<Z74>::from(69) + Zn::from(5)).is_zero());
+        assert!(Zn::<Z180>::from(174) + Zn::from(389) == Zn::from(23));
+        assert!(-Zn::<Z47>::from(111) == Zn::from(30));
     }
 
     #[test]
     fn mul() {
-        assert!(Zn::<14>::from(19) * Zn::from(5) == Zn::from(11));
-        assert!((Zn::<9>::from(81) * Zn::from(12326234)).is_zero());
+        assert!(Zn::<Z14>::from(19) * Zn::from(5) == Zn::from(11));
+        assert!((Zn::<Z9>::from(81) * Zn::from(12326234)).is_zero());
     }
 
     #[test]
     fn inv() {
-        assert!(Zn::<18>::from(5).inv() == Zn::from(11));
-        assert!(Zn::<17>::from(8).inv() == Zn::from(15));
+        assert!(Zn::<Z18>::from(5).inv() == Zn::from(11));
+        assert!(Zn::<Z17>::from(8).inv() == Zn::from(15));
     }
 
     #[test]
     fn sqrt() {
-        let a = Zn::<19>::from(11);
+        let a = Zn::<Z19>::from(11);
         let sqrt = a.clone().sqrt().unwrap();
-        assert!(sqrt.pow(2) == a);
+        assert!(sqrt.pow(BigUint::from(2usize)) == a);
+    }
+
+    pub struct Z74;
+    pub struct Z180;
+    pub struct Z47;
+    pub struct Z14;
+    pub struct Z9;
+    pub struct Z18;
+    pub struct Z17;
+    pub struct Z19;
+
+    impl BigPrime for Z74 {
+        fn value() -> BigUint {
+            BigUint::from(74usize)
+        }
+    }
+
+    impl BigPrime for Z180 {
+        fn value() -> BigUint {
+            BigUint::from(180usize)
+        }
+    }
+
+    impl BigPrime for Z47 {
+        fn value() -> BigUint {
+            BigUint::from(47usize)
+        }
+    }
+
+    impl BigPrime for Z14 {
+        fn value() -> BigUint {
+            BigUint::from(14usize)
+        }
+    }
+
+    impl BigPrime for Z9 {
+        fn value() -> BigUint {
+            BigUint::from(9usize)
+        }
+    }
+
+    impl BigPrime for Z18 {
+        fn value() -> BigUint {
+            BigUint::from(18usize)
+        }
+    }
+
+    impl BigPrime for Z17 {
+        fn value() -> BigUint {
+            BigUint::from(17usize)
+        }
+    }
+
+    impl BigPrime for Z19 {
+        fn value() -> BigUint {
+            BigUint::from(19usize)
+        }
     }
 }
