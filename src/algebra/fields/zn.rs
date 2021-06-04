@@ -1,7 +1,7 @@
 use std::{
     array::TryFromSliceError,
     convert::TryInto,
-    iter::Sum,
+    iter::{Product, Sum},
     ops::{Add, Div, Mul, Neg, Sub},
 };
 
@@ -125,6 +125,12 @@ impl<const N: usize> Pow<usize> for Zn<N> {
 
     fn pow(self, rhs: usize) -> Self::Output {
         Self::from(repeat_monoid(usize::mul, rhs, self.0, 1))
+    }
+}
+
+impl<const N: usize> Product for Zn<N> {
+    fn product<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.into_iter().fold(Self::one(), Self::mul)
     }
 }
 

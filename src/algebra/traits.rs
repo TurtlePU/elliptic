@@ -1,5 +1,5 @@
 use std::{
-    iter::Sum,
+    iter::{Product, Sum},
     ops::{Add, Div, Mul, Neg, Rem, Sub},
 };
 
@@ -23,7 +23,7 @@ pub trait FinGroup: Group {
 }
 
 pub trait Ring:
-    Group + One + Mul<Output = Self> + Pow<usize, Output = Self>
+    Group + One + Mul<Output = Self> + Pow<usize, Output = Self> + Product
 {
 }
 

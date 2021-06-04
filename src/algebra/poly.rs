@@ -1,5 +1,5 @@
 use std::{
-    iter::{repeat_with, Sum},
+    iter::{repeat_with, Product, Sum},
     ops::{Add, Div, Mul, Neg, Rem, Sub},
 };
 
@@ -214,6 +214,12 @@ impl<T: Ring> Pow<usize> for Poly<T> {
     }
 }
 
+impl<T: Ring> Product for Poly<T> {
+    fn product<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.into_iter().fold(Self::one(), Self::mul)
+    }
+}
+
 impl<T: Field> Div for Poly<T> {
     type Output = Self;
 
@@ -284,9 +290,9 @@ mod tests {
 
     #[test]
     fn add() {
-        let a = Poly(vec![1, -1,  15,  8]);
-        let b = Poly(vec![1,  1, -14, -8]);
-        let c = Poly(vec![2,  0,   1]);
+        let a = Poly(vec![1, -1, 15, 8]);
+        let b = Poly(vec![1, 1, -14, -8]);
+        let c = Poly(vec![2, 0, 1]);
         assert!(a.clone() + b.clone() == c);
         assert!(b.clone() + a.clone() == c);
         assert!(b == c.clone() - a.clone());
@@ -294,8 +300,8 @@ mod tests {
         assert!((a.clone() + b.clone() - c.clone()).is_zero());
         assert!((a.clone() + (b.clone() - c.clone())).is_zero());
 
-        let a = Poly(vec![ 15,  124, -443]);
-        let b = Poly(vec![-15, -124,  443]);
+        let a = Poly(vec![15, 124, -443]);
+        let b = Poly(vec![-15, -124, 443]);
         assert!((a + b).is_zero());
     }
 

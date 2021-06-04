@@ -1,5 +1,5 @@
 use std::{
-    iter::Sum,
+    iter::{Product, Sum},
     marker::PhantomData,
     ops::{Add, Div, Mul, Neg, Sub},
 };
@@ -182,6 +182,16 @@ where
     }
 }
 
+impl<T, I> Product for PolyField<T, I>
+where
+    I: Irreducible<T>,
+    Poly<T>: Integral,
+{
+    fn product<J: Iterator<Item = Self>>(iter: J) -> Self {
+        I::into_field(iter.into_iter().map(|x| x.0).product())
+    }
+}
+
 impl<T, I> Zero for PolyField<T, I>
 where
     I: Irreducible<T>,
@@ -234,8 +244,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{algebra::{fields::Zn, poly::Poly}, poly};
     use super::{Irreducible, PolyField};
+    use crate::{
+        algebra::{fields::Zn, poly::Poly},
+        poly,
+    };
 
     pub struct XcubePlus2;
 
