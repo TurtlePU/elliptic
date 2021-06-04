@@ -1,4 +1,5 @@
 use std::{
+    array::TryFromSliceError,
     convert::TryInto,
     iter::Sum,
     ops::{Add, Div, Mul, Neg, Sub},
@@ -15,9 +16,12 @@ use rand::{
     Rng,
 };
 
-use crate::algebra::{
-    algo::{extended_gcd, is_prime, repeat_monoid},
-    traits::{Field, FinGroup, Group, Ring, Sqrt},
+use crate::{
+    algebra::{
+        algo::{extended_gcd, is_prime, repeat_monoid},
+        traits::{Field, FinGroup, Group, Ring, Sqrt},
+    },
+    bytes::{Decoding, Deserialize, Encoding, Serialize},
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -159,6 +163,43 @@ impl<const N: usize> Zero for Zn<N> {
 impl<const N: usize> One for Zn<N> {
     fn one() -> Self {
         Self::from(1)
+    }
+}
+
+impl<const N: usize> Encoding for Zn<N> {
+    fn encode(stream: &mut impl Iterator<Item = u8>) -> Option<Self> {
+        assert!(N > u8::MAX as usize);
+        stream.next().map(|x| usize::from(x).into())
+    }
+}
+
+impl<const N: usize> Decoding for Zn<N> {
+    type Error = <usize as TryInto<u8>>::Error;
+
+    fn decode(self) -> Result<Vec<u8>, Self::Error> {
+        self.0.try_into().map(|x| vec![x])
+    }
+}
+
+impl<const N: usize> Serialize for Zn<N> {
+    fn serialize(self) -> Vec<u8> {
+        self.0.to_be_bytes().into()
+    }
+}
+
+impl<const N: usize> Deserialize for Zn<N> {
+    type Error = TryFromSliceError;
+
+    fn deserialize(
+        stream: &mut impl Iterator<Item = u8>,
+    ) -> Result<Option<Self>, Self::Error> {
+        const BYTES: usize = std::mem::size_of::<usize>();
+        let vec: Vec<_> = (0..BYTES).filter_map(|_| stream.next()).collect();
+        if vec.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(Self::from(usize::from_be_bytes(vec[..].try_into()?))))
+        }
     }
 }
 

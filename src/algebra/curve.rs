@@ -1,4 +1,5 @@
 use std::{
+    error::Error,
     fmt::Debug,
     iter::Sum,
     marker::PhantomData,
@@ -8,6 +9,9 @@ use std::{
 use num_bigint::BigUint;
 use num_traits::Zero;
 use rand::{distributions::Standard, prelude::Distribution, Rng};
+use thiserror::Error;
+
+use crate::bytes::{Decoding, Deserialize, Encoding, Serialize};
 
 use super::{
     algo::repeat_monoid,
@@ -28,7 +32,15 @@ pub trait Curve<F: Field>: Sized {
     }
 }
 
-#[derive(Debug)]
+pub trait Encoder<T> {
+    type Error: Error + 'static;
+
+    fn encode(stream: &mut impl Iterator<Item = u8>) -> Option<T>;
+    fn decode(item: T) -> Result<Vec<u8>, Self::Error>;
+}
+
+#[derive(Debug, Error)]
+#[error("Point is not on curve.")]
 pub struct NotOnCurve;
 
 pub struct EllipticPoint<F, C> {
@@ -242,4 +254,75 @@ fn solve<F: Field + Sqrt, C: Curve<F>>(x: F) -> Option<F> {
 
 fn right_side<F: Field, C: Curve<F>>(x: F) -> F {
     x.clone().pow(3) + C::a() * x + C::b()
+}
+
+impl<F, C> Encoding for EllipticPoint<F, C>
+where
+    C: Encoder<EllipticPoint<F, C>>,
+{
+    fn encode(stream: &mut impl Iterator<Item = u8>) -> Option<Self> {
+        C::encode(stream)
+    }
+}
+
+impl<F, C> Decoding for EllipticPoint<F, C>
+where
+    C: Encoder<EllipticPoint<F, C>>,
+{
+    type Error = C::Error;
+
+    fn decode(self) -> Result<Vec<u8>, Self::Error> {
+        C::decode(self)
+    }
+}
+
+impl<F, C> Serialize for EllipticPoint<F, C>
+where
+    F: Field + Serialize,
+{
+    fn serialize(self) -> Vec<u8> {
+        match Option::<(F, F)>::from(self) {
+            Some(points) => {
+                let mut result = vec![1];
+                result.append(&mut points.serialize());
+                result
+            }
+            None => vec![0],
+        }
+    }
+}
+
+impl<F, C> Deserialize for EllipticPoint<F, C>
+where
+    F: Field + Deserialize,
+    C: Curve<F>,
+{
+    type Error = PointDeserError<F::Error>;
+
+    fn deserialize(
+        stream: &mut impl Iterator<Item = u8>,
+    ) -> Result<Option<Self>, Self::Error> {
+        use PointDeserError::NotEnoughBytes;
+        match stream.next() {
+            Some(0) => Ok(Some(EllipticPoint::zero())),
+            Some(_) => {
+                let x = F::deserialize(stream)?.ok_or(NotEnoughBytes)?;
+                let y = F::deserialize(stream)?.ok_or(NotEnoughBytes)?;
+                C::affine(x, y)
+                    .map(Some)
+                    .map_err(PointDeserError::NotOnCurve)
+            }
+            None => Ok(None),
+        }
+    }
+}
+
+#[derive(Debug, Error)]
+pub enum PointDeserError<E: Debug + Error + 'static> {
+    #[error(transparent)]
+    FieldDeser(#[from] E),
+    #[error("Not enough bytes")]
+    NotEnoughBytes,
+    #[error(transparent)]
+    NotOnCurve(NotOnCurve),
 }
