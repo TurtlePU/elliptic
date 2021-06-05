@@ -59,6 +59,7 @@ pub trait Encoder<T> {
 #[error("Point is not on curve.")]
 pub struct NotOnCurve;
 
+#[derive(Debug)]
 pub struct EllipticPoint<F, C> {
     coords: (F, F, F),
     curve: PhantomData<C>,

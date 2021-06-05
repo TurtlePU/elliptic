@@ -1,10 +1,4 @@
-use std::{
-    array::TryFromSliceError,
-    convert::TryFrom,
-    iter::{Product, Sum},
-    marker::PhantomData,
-    ops::{Add, Div, Mul, Neg, Sub},
-};
+use std::{array::TryFromSliceError, convert::{TryFrom, TryInto}, iter::{Product, Sum}, marker::PhantomData, ops::{Add, Div, Mul, Neg, Sub}};
 
 use num_bigint::{BigInt, BigUint};
 use num_traits::{Inv, One, Pow, Zero};
@@ -46,6 +40,16 @@ impl<N: BigPrime> From<BigUint> for Zn<N> {
     }
 }
 
+impl<N: BigPrime> From<BigInt> for Zn<N> {
+    fn from(n: BigInt) -> Self {
+        let mut n: BigInt = n % BigInt::from(N::value());
+        if n < BigInt::zero() {
+            n += BigInt::from(N::value());
+        }
+        Self(BigUint::try_from(n).unwrap(), PhantomData)
+    }
+}
+
 impl<N: BigPrime> From<usize> for Zn<N> {
     fn from(x: usize) -> Self {
         Self::from(BigUint::from(x))
@@ -55,6 +59,12 @@ impl<N: BigPrime> From<usize> for Zn<N> {
 impl<N: BigPrime> From<Zn<N>> for BigUint {
     fn from(zn: Zn<N>) -> Self {
         zn.0
+    }
+}
+
+impl<N: BigPrime> From<&Zn<N>> for usize {
+    fn from(zn: &Zn<N>) -> Self {
+        zn.0.clone().try_into().unwrap()
     }
 }
 
@@ -158,13 +168,9 @@ impl<N: BigPrime> Inv for Zn<N> {
 
     fn inv(self) -> Self::Output {
         let n: BigInt = N::value().into();
-        let (gcd, mut inv, _) = extended_gcd(self.0.into(), n.clone());
+        let (gcd, inv, _) = extended_gcd(self.0.into(), n.clone());
         assert!(gcd.is_one());
-        inv = inv % &n;
-        if inv < BigInt::zero() {
-            inv += n;
-        }
-        Self::from(BigUint::try_from(inv).unwrap())
+        Self::from(inv)
     }
 }
 
@@ -172,7 +178,9 @@ impl<N: BigPrime> Div for Zn<N> {
     type Output = Self;
 
     fn div(self, rhs: Self) -> Self::Output {
-        self * rhs.inv()
+        let (l, r) = (BigInt::from(self.0), BigInt::from(rhs.0));
+        let (gcd, _, _) = extended_gcd(l.clone(), r.clone());
+        Self::from(l / gcd.clone()) * Self::from(r / gcd).inv()
     }
 }
 

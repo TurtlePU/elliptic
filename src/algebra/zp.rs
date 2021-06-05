@@ -21,11 +21,24 @@ pub trait Generator {
     fn order() -> BigUint;
 }
 
+#[derive(Debug)]
 pub struct Zp<N>(Zn<N>);
 
 impl<N: BigPrime> From<BigUint> for Zp<N> {
     fn from(x: BigUint) -> Self {
         Self(Zn::from(x))
+    }
+}
+
+impl<N: BigPrime> From<BigInt> for Zp<N> {
+    fn from(x: BigInt) -> Self {
+        Self(Zn::from(x))
+    }
+}
+
+impl<N> From<Zp<N>> for Zn<N> {
+    fn from(x: Zp<N>) -> Self {
+        x.0
     }
 }
 
