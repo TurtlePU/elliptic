@@ -31,6 +31,10 @@ pub trait Curve<F: Field>: Sized {
             Err(NotOnCurve)
         }
     }
+
+    fn solve(x: F) -> Option<F> where F: Sqrt {
+        solve::<F, Self>(x)
+    }
 }
 
 pub fn check_char<F: Debug + Field>() {
@@ -324,7 +328,7 @@ fn solve<F: Field + Sqrt, C: Curve<F>>(x: F) -> Option<F> {
     right_side::<F, C>(x).sqrt()
 }
 
-fn right_side<F: Field, C: Curve<F>>(x: F) -> F {
+pub fn right_side<F: Field, C: Curve<F>>(x: F) -> F {
     cube(x.clone()) + C::a() * x + C::b()
 }
 

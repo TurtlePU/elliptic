@@ -29,10 +29,9 @@ where
     T: Clone,
     F: Fn(T, T) -> T,
 {
-    let two = BigUint::from(2usize);
     while !cnt.is_zero() {
-        if (&cnt % &two).is_zero() {
-            cnt /= &two;
+        if cnt.trailing_ones() == 0 {
+            cnt >>= 1;
             value = app(value.clone(), value);
         } else {
             cnt -= BigUint::one();

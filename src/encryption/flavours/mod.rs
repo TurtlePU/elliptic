@@ -8,8 +8,8 @@ use crate::algebra::{
 
 use self::el_gamal::ElGamal;
 
-mod el_gamal;
-mod el_gamal_kem;
+pub mod el_gamal;
+pub mod el_gamal_kem;
 
 pub fn el_gamal_prime_curve<F, C>(
 ) -> ElGamal<impl Fn(&mut dyn RngCore) -> EllipticPoint<F, C>>

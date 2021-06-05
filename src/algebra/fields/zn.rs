@@ -12,7 +12,7 @@ use rand::{distributions::Standard, prelude::Distribution};
 
 use crate::{
     algebra::{
-        algo::{extended_gcd, is_prime, repeat_monoid},
+        algo::extended_gcd,
         traits::{Field, FinGroup, Group, Ring, Sqrt},
     },
     bytes::{Deserialize, Serialize},
@@ -80,13 +80,10 @@ impl<N> Eq for Zn<N> where BigUint: Eq {}
 
 impl<N: BigPrime> Sqrt for Zn<N> {
     fn sqrt(self) -> Option<Self> {
-        assert!(is_prime(Self::order()));
-        let one = BigUint::one();
-        let four = BigUint::from(4usize);
-        assert!(((N::value() + one.clone()) % four.clone()).is_zero());
-        let sqrt = self.clone().pow((N::value() + one) / four);
-        if sqrt.clone().pow(BigUint::from(2usize)) == self {
-            Some(sqrt)
+        let deg = (N::value() + BigUint::one()) >> 2;
+        let sqrt = self.clone().pow(deg);
+        if sqrt.clone() * sqrt.clone() == self {
+            Some(Self::from(sqrt))
         } else {
             None
         }
@@ -146,7 +143,7 @@ impl<N: BigPrime> Pow<BigUint> for Zn<N> {
     type Output = Self;
 
     fn pow(self, rhs: BigUint) -> Self::Output {
-        Self::from(repeat_monoid(BigUint::mul, rhs, self.0, BigUint::one()))
+        Self(self.0.modpow(&rhs, &N::value()), PhantomData)
     }
 }
 
