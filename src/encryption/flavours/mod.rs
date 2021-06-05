@@ -1,23 +1,14 @@
-use rand::{distributions::Standard, prelude::Distribution, Rng, RngCore};
-
-use crate::algebra::{
-    algo::is_prime,
-    curve::{Curve, EllipticPoint},
-    traits::{Field, Sqrt},
-};
+use rand::RngCore;
 
 use self::el_gamal::ElGamal;
 
 pub mod el_gamal;
 pub mod el_gamal_kem;
 
-pub fn el_gamal_prime_curve<F, C>(
-) -> ElGamal<impl Fn(&mut dyn RngCore) -> EllipticPoint<F, C>>
-where
-    F: Field + Sqrt,
-    C: Curve<F>,
-    Standard: Distribution<F>,
-{
-    assert!(is_prime(C::group_order()));
-    ElGamal::from(|rng: &mut dyn RngCore| rng.gen::<EllipticPoint<F, C>>())
+pub fn el_gamal_const<T>(
+    f: impl Fn() -> T,
+) -> ElGamal<impl Fn(&mut dyn RngCore) -> T> {
+    ElGamal {
+        get_group_generator: move |_: &mut dyn RngCore| f(),
+    }
 }
