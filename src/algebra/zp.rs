@@ -1,6 +1,5 @@
 use std::{
-    array::TryFromSliceError,
-    convert::{TryFrom, TryInto},
+    convert::TryInto,
     iter::Sum,
     ops::{Add, Mul, Neg, Sub},
 };
@@ -14,43 +13,26 @@ use crate::bytes::{Decoding, Deserialize, Encoding, Serialize};
 
 use super::{
     fields::zn::{BigPrime, Zn},
-    traits::Group,
+    traits::{FinGroup, Group},
 };
+
+pub trait Generator {
+    fn generator() -> BigUint;
+    fn order() -> BigUint;
+}
 
 pub struct Zp<N>(Zn<N>);
 
-#[derive(Debug, Error)]
-#[error("Zp cannot be 0")]
-pub struct IsZero;
-
-impl<N: BigPrime> TryFrom<usize> for Zp<N> {
-    type Error = IsZero;
-
-    fn try_from(value: usize) -> Result<Self, Self::Error> {
-        Zn::from(value).try_into()
+impl<N: BigPrime> From<BigUint> for Zp<N> {
+    fn from(x: BigUint) -> Self {
+        Self(Zn::from(x))
     }
 }
 
-impl<N: BigPrime> TryFrom<Zn<N>> for Zp<N> {
-    type Error = IsZero;
-
-    fn try_from(value: Zn<N>) -> Result<Self, Self::Error> {
-        if value.is_zero() {
-            Err(IsZero)
-        } else {
-            Ok(Self(value))
-        }
-    }
-}
-
-impl<N: BigPrime> Distribution<Zp<N>> for Standard {
+impl<N: BigPrime + Generator> Distribution<Zp<N>> for Standard {
     fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> Zp<N> {
-        loop {
-            let zn: Zn<N> = self.sample(rng);
-            if let Ok(zp) = zn.try_into() {
-                break zp;
-            }
-        }
+        let degree = rng.gen_range(BigUint::one()..N::order());
+        N::generator().pow(degree).into()
     }
 }
 
@@ -70,17 +52,23 @@ impl<N> Eq for Zp<N> where Zn<N>: Eq {}
 
 impl<N: BigPrime> Group for Zp<N> {}
 
+impl<N: BigPrime + Generator> FinGroup for Zp<N> {
+    fn order() -> BigUint {
+        N::order()
+    }
+}
+
 impl<N: BigPrime> Add for Zp<N> {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
-        Self::try_from(self.0 * rhs.0).unwrap()
+        Self(self.0 * rhs.0)
     }
 }
 
 impl<N: BigPrime> Zero for Zp<N> {
     fn zero() -> Self {
-        Zn::one().try_into().unwrap()
+        Self(Zn::one())
     }
 
     fn is_zero(&self) -> bool {
@@ -92,7 +80,7 @@ impl<N: BigPrime> Neg for Zp<N> {
     type Output = Self;
 
     fn neg(self) -> Self::Output {
-        self.0.inv().try_into().unwrap()
+        Self(self.0.inv())
     }
 }
 
@@ -106,11 +94,7 @@ impl<N: BigPrime> Sub for Zp<N> {
 
 impl<N: BigPrime> Sum for Zp<N> {
     fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
-        iter.into_iter()
-            .map(|x| x.0)
-            .product::<Zn<N>>()
-            .try_into()
-            .unwrap()
+        Self(iter.into_iter().map(|x| x.0).product())
     }
 }
 
@@ -119,42 +103,29 @@ impl<N: BigPrime> Mul<BigInt> for Zp<N> {
 
     fn mul(self, rhs: BigInt) -> Self::Output {
         match rhs.try_into() {
-            Ok(rhs) => self.0.pow(rhs).try_into().unwrap(),
+            Ok(rhs) => Self(self.0.pow(rhs)),
             Err(err) => -self * -err.into_original(),
         }
     }
 }
 
-impl<N: BigPrime> Encoding for Zp<N> {
+impl<N: BigPrime + Generator> Encoding for Zp<N> {
     fn encode(stream: &mut impl Iterator<Item = u8>) -> Option<Self> {
-        let len = bytevec_len::<N>();
-        let bytes: Vec<_> = (0..len).filter_map(|_| stream.next()).collect();
-        if bytes.len() == 0 {
-            None
-        } else {
-            let n = BigUint::from_bytes_le(&bytes) + BigUint::one();
-            Some(Self(Zn::from(n)))
-        }
+        stream.next().map(|x| (N::generator() * BigUint::from(x)).into())
     }
 }
 
-impl<N: BigPrime> Decoding for Zp<N> {
+impl<N: BigPrime + Generator> Decoding for Zp<N> {
     type Error = TooBig;
 
     fn decode(self) -> Result<Vec<u8>, Self::Error> {
-        let len = bytevec_len::<N>();
-        let mut bytes = (BigUint::from(self.0) - BigUint::one()).to_bytes_le();
-        if bytes.len() > len {
-            Err(TooBig(BigUint::from_bytes_le(&bytes)))
-        } else {
-            bytes.resize(len, 0);
-            Ok(bytes)
+        for x in u8::MIN..=u8::MAX {
+            if Self::from(N::generator() * BigUint::from(x)) == self {
+                return Ok(vec![x]);
+            }
         }
+        Err(TooBig(self.0.into()))
     }
-}
-
-fn bytevec_len<N: BigPrime>() -> usize {
-    (N::value() - BigUint::one()).to_bytes_le().len() - 1
 }
 
 impl<N: BigPrime> Serialize for Zp<N> {
@@ -164,27 +135,15 @@ impl<N: BigPrime> Serialize for Zp<N> {
 }
 
 impl<N: BigPrime> Deserialize for Zp<N> {
-    type Error = ZpDeserError;
+    type Error = <Zn<N> as Deserialize>::Error;
 
     fn deserialize(
         stream: &mut impl Iterator<Item = u8>,
     ) -> Result<Option<Self>, Self::Error> {
-        match Zn::<N>::deserialize(stream) {
-            Ok(Some(x)) => Ok(Some(x.try_into()?)),
-            Ok(None) => Ok(None),
-            Err(err) => Err(err.into()),
-        }
+        Zn::<N>::deserialize(stream).map(|x| x.map(Self))
     }
 }
 
 #[derive(Debug, Error)]
 #[error("{0} is too big for decoding")]
 pub struct TooBig(BigUint);
-
-#[derive(Debug, Error)]
-pub enum ZpDeserError {
-    #[error("Not enough bytes")]
-    NotEnoughBytes(#[from] TryFromSliceError),
-    #[error(transparent)]
-    IsZero(#[from] IsZero),
-}
