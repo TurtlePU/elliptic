@@ -51,6 +51,7 @@ where
     ) -> (Self::PublicKey, Self::Secret) {
         let group_generator = (self.get_group_generator)(rng);
         let secret = rng.gen_range(BigInt::one()..T::order().into());
+        println!("secret is: {}", secret);
         let key = group_generator.clone() * secret.clone();
         (
             ElGamalPublicKey {
